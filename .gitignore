@@ -1,0 +1,20 @@
+# IDE and local tooling
+.idea/
+*.iml
+.vscode/
+
+# Gradle and Kotlin
+.gradle/
+.kotlin/
+**/build/
+
+# Generated portable applications
+outputs/
+
+# Local machine files
+local.properties
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db

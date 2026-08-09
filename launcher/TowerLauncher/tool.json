@@ -1,0 +1,10 @@
+{
+  "id": "dev.towertools.launcher",
+  "projectName": "TowerLauncher",
+  "displayName": "工具塔",
+  "description": "集中浏览并启动 Tower Tools 便携工具。",
+  "version": "1.0.0",
+  "author": "Alice-tower",
+  "uuid": "9d2a4368-292c-4aaf-b11c-8e62ba97fc71",
+  "executableName": "TowerLauncher.exe"
+}

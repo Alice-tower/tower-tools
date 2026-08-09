@@ -1,0 +1,42 @@
+package dev.towertools.launcher
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.darkColors
+import androidx.compose.material.lightColors
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
+import java.awt.EventQueue
+import java.awt.Frame
+
+fun main() {
+    val singleInstance = runCatching { SingleInstance.acquire(AppMetadata.id) }
+        .onFailure { AppLog.logger.severe("Unable to initialize single-instance control: ${it.message}") }
+        .getOrNull()
+        ?: return
+
+    val repository = CatalogRepository.default()
+
+    application {
+        val state = rememberWindowState(width = 960.dp, height = 680.dp)
+        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName) {
+            DisposableEffect(window) {
+                singleInstance.onActivate {
+                    EventQueue.invokeLater {
+                        window.extendedState = Frame.NORMAL
+                        window.isVisible = true
+                        window.toFront()
+                        window.requestFocus()
+                    }
+                }
+                onDispose(singleInstance::close)
+            }
+            MaterialTheme(colors = if (isSystemInDarkTheme()) darkColors() else lightColors()) {
+                LauncherApp(repository)
+            }
+        }
+    }
+}
