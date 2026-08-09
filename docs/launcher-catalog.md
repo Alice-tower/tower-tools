@@ -37,3 +37,9 @@ Paths are relative to the `outputs/` directory. The source-side `catalog/tools.j
 ```
 
 Packaging never writes this file. Missing overrides fall back to category `未分类` and order `0`. Tools sort by ascending order and then by display name.
+
+## Launcher interface
+
+The launcher uses a category sidebar and a compact tool list designed for larger collections. Category counts and each tool's effective order are always visible. Use the tool's right-click menu and select `编辑分类和排序` to change both values; the dialog can reuse an existing category and shows the order values of other tools in that category for comparison. Saving updates `user-settings.json` and immediately reloads the list. An empty category is normalized to `未分类`; order accepts any integer, including negative values.
+
+Double-clicking a row or pressing its `启动` button launches the tool. The remaining right-click actions open the portable directory or the tool's log directory. The launcher intentionally has no installation, update, shortcut, search, drag-ordering, or window-state system.

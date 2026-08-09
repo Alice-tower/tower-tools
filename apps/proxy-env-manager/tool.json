@@ -1,0 +1,10 @@
+{
+    "id":  "dev.towertools.proxyenvmanager",
+    "projectName":  "ProxyEnvManager",
+    "displayName":  "代理环境变量",
+    "description":  "查看并管理当前用户的 HTTP_PROXY 和 HTTPS_PROXY 环境变量。",
+    "version":  "1.0.0",
+    "author":  "Alice-tower",
+    "uuid":  "09d3bbd4-b7e4-4a61-88b8-26c3f08bfc09",
+    "executableName":  "ProxyEnvManager.exe"
+}

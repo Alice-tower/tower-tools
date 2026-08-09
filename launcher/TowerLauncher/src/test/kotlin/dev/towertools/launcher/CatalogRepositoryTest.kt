@@ -34,6 +34,26 @@ class CatalogRepositoryTest {
         }
     }
 
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun updateOverridePersistsCategoryAndOrder() {
+        val root = createTempDirectory("tower-launcher-update-test")
+        try {
+            val catalog = root.resolve("catalog.json")
+            val settings = root.resolve("user-settings.json")
+            Files.writeString(catalog, catalogJson(version = "1.0.0"))
+            val repository = CatalogRepository(root, catalog, settings)
+
+            repository.updateOverride("dev.towertools.sample", "网络工具", -10)
+
+            val updated = repository.load().single()
+            assertEquals("网络工具", updated.category)
+            assertEquals(-10, updated.order)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun catalogJson(version: String) = """
         {
           "schemaVersion": 1,

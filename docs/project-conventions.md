@@ -31,3 +31,7 @@ Applications begin at `1.0.0` and use semantic versions. Portable outputs replac
 All tools expose a GUI. The default template provides a Chinese interface, system light/dark theme support, standard window sizing, a visible error surface, logging, and single-instance activation.
 
 Small applications should stay structurally simple. Add architectural layers only when the feature set requires them.
+
+## Agent instructions
+
+All projects inherit the repository-level `AGENTS.md`. Do not create another `AGENTS.md` inside every tool by default. Add a tool-specific file only when that tool has lasting rules or constraints that differ from the repository defaults.
