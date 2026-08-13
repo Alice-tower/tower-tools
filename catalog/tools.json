@@ -20,6 +20,16 @@
                       "executablePath":  "tools/dev.towertools.imageprocessor/ImageProcessor.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0
+                  },
+                  {
+                      "id":  "dev.towertools.researchlibrarylauncher",
+                      "projectName":  "ResearchLibraryLauncher",
+                      "displayName":  "研究资料库",
+                      "description":  "启动并访问本地研究资料库",
+                      "version":  "1.0.0",
+                      "executablePath":  "tools/dev.towertools.researchlibrarylauncher/ResearchLibraryLauncher.exe",
+                      "defaultCategory":  "未分类",
+                      "defaultOrder":  0
                   }
               ]
 }

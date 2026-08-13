@@ -1,0 +1,10 @@
+{
+  "id": "dev.towertools.researchlibrarylauncher",
+  "projectName": "ResearchLibraryLauncher",
+  "displayName": "研究资料库",
+  "description": "启动并访问本地研究资料库",
+  "version": "1.0.0",
+  "author": "Alice-tower",
+  "uuid": "dc8c58ac-d062-4bbe-af42-fc90cfe44528",
+  "executableName": "ResearchLibraryLauncher.exe"
+}
