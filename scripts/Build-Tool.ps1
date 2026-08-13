@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$Id,
-    [switch]$SkipCatalog
+    [switch]$SkipCatalog,
+    [switch]$Clean
 )
 
 . (Join-Path $PSScriptRoot 'Common.ps1')
@@ -15,7 +16,11 @@ $stage = Join-Path $stagingRoot ("tool-" + [Guid]::NewGuid().ToString('N'))
 $prepared = Join-Path $stage $metadata.id
 
 try {
-    Invoke-Gradle -ProjectPath $projectPath -Tasks @('clean', 'test', 'createDistributable')
+    $tasks = @('test', 'createDistributable')
+    if ($Clean) {
+        $tasks = @('clean') + $tasks
+    }
+    Invoke-Gradle -ProjectPath $projectPath -Tasks $tasks
     $appRoot = Join-Path $projectPath 'build\compose\binaries\main\app'
     $executable = Get-ChildItem -LiteralPath $appRoot -Filter $metadata.executableName -File -Recurse -ErrorAction Stop | Select-Object -First 1
     if (-not $executable) {

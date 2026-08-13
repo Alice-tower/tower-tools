@@ -1,5 +1,7 @@
 ﻿[CmdletBinding()]
-param()
+param(
+    [switch]$Clean
+)
 
 . (Join-Path $PSScriptRoot 'Common.ps1')
 
@@ -13,7 +15,11 @@ $prepared = Join-Path $stage 'launcher'
 Sync-TowerCatalog
 
 try {
-    Invoke-Gradle -ProjectPath $projectPath -Tasks @('clean', 'test', 'createDistributable')
+    $tasks = @('test', 'createDistributable')
+    if ($Clean) {
+        $tasks = @('clean') + $tasks
+    }
+    Invoke-Gradle -ProjectPath $projectPath -Tasks $tasks
     $appRoot = Join-Path $projectPath 'build\compose\binaries\main\app'
     $executable = Get-ChildItem -LiteralPath $appRoot -Filter 'TowerLauncher.exe' -File -Recurse -ErrorAction Stop | Select-Object -First 1
     if (-not $executable) {

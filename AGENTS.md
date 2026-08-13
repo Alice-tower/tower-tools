@@ -7,6 +7,9 @@
 - Application IDs are stable and use the `dev.towertools.*` namespace. Do not change a released ID.
 - Portable outputs belong only under `outputs/` and must never be committed.
 - Runtime configuration and logs belong under `%LOCALAPPDATA%\Alice-tower\...`; rebuilding must not overwrite user data.
+- Invoke lifecycle scripts through `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` so repository work does not depend on the machine's PowerShell execution policy.
+- Lifecycle scripts own the shared Gradle user home at `.gradle-user-home/`; do not override `GRADLE_USER_HOME` for repository builds.
+- In a managed sandbox, request build permission before running a lifecycle script that invokes Gradle instead of waiting for Gradle child-process writes to fail.
 - Read the relevant document under `docs/` before changing architecture, naming, the catalog, lifecycle scripts, or build behavior.
 
 Detailed references:

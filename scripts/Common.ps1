@@ -59,6 +59,12 @@ function Set-JavaEnvironment {
     }
 }
 
+function Set-GradleEnvironment {
+    $gradleUserHome = Join-Path $script:RepoRoot '.gradle-user-home'
+    [IO.Directory]::CreateDirectory($gradleUserHome) | Out-Null
+    $env:GRADLE_USER_HOME = $gradleUserHome
+}
+
 function Invoke-Gradle {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectPath,
@@ -66,6 +72,7 @@ function Invoke-Gradle {
     )
 
     Set-JavaEnvironment
+    Set-GradleEnvironment
     $wrapper = Join-Path $ProjectPath 'gradlew.bat'
     if (-not (Test-Path -LiteralPath $wrapper -PathType Leaf)) {
         throw "Gradle Wrapper was not found: $wrapper"

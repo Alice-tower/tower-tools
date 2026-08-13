@@ -25,12 +25,14 @@ Current tools:
 ## Common commands
 
 ```powershell
-.\scripts\New-Tool.ps1 -DisplayName "示例工具" -ProjectName "ExampleTool" -Description "用途说明"
-.\scripts\Build-Tool.ps1 -Id "dev.towertools.exampletool"
-.\scripts\Build-Launcher.ps1
-.\scripts\Build-All.ps1
-.\scripts\Remove-Tool.ps1 -Id "dev.towertools.exampletool"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\New-Tool.ps1 -DisplayName "示例工具" -ProjectName "ExampleTool" -Description "用途说明"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Tool.ps1 -Id "dev.towertools.exampletool"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Launcher.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-All.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Remove-Tool.ps1 -Id "dev.towertools.exampletool"
 ```
+
+Builds reuse the repository-local `.gradle-user-home/` cache and are incremental by default. Add `-Clean` to a build command only when a clean rebuild is required.
 
 See `docs/tool-lifecycle.md` before adding or removing a tool manually.
 

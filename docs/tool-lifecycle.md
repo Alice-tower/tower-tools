@@ -2,13 +2,13 @@
 
 ## Create
 
-Use `scripts/New-Tool.ps1`. The script validates identity fields, copies the template, replaces explicit tokens, moves Kotlin sources into the package path, creates metadata, builds a portable directory, synchronizes the catalog, and rebuilds the launcher.
+Use `scripts/New-Tool.ps1` through the PowerShell invocation documented in `docs/build-environment.md`. The script validates identity fields, copies the template, replaces explicit tokens, moves Kotlin sources into the package path, creates metadata, builds a portable directory, synchronizes the catalog, and rebuilds the launcher.
 
 The command accepts interactive input when a required value is omitted. Codex normally proposes the display name, project name, description, and ID before invoking it.
 
 ## Update
 
-Edit the independent project below `apps/`, increment its version in `tool.json` and `build.gradle.kts`, then run `scripts/Build-Tool.ps1`. A successful build replaces only the program directory. User configuration and logs remain in `%LOCALAPPDATA%`.
+Edit the independent project below `apps/`, increment its version in `tool.json` and `build.gradle.kts`, then run `scripts/Build-Tool.ps1`. Builds are incremental by default; pass `-Clean` only when a clean rebuild is needed. A successful build replaces only the program directory. User configuration and logs remain in `%LOCALAPPDATA%`.
 
 ## Remove
 
