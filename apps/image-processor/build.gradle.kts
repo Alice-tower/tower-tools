@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.imageprocessor"
-version = "1.1.0"
+version = "1.1.1"
 
 kotlin {
     jvmToolchain(21)
@@ -32,7 +32,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "ImageProcessor"
-            packageVersion = "1.1.0"
+            packageVersion = "1.1.1"
             vendor = "Alice-tower"
         }
     }

@@ -65,6 +65,43 @@ class OutputWorkflowTest {
     }
 
     @Test
+    fun `fine crop webp split writes every tile instead of black child rasters`() {
+        val root = createTempDirectory("image-processor-webp-split-")
+        val sourcePath = root.resolve("彩色分块.webp")
+        val outputDirectory = root.resolve("output").createDirectory()
+        val source = BufferedImage(14, 10, BufferedImage.TYPE_INT_RGB)
+        val colors = listOf(Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN)
+        val graphics = source.createGraphics()
+        graphics.color = Color.BLACK
+        graphics.fillRect(0, 0, source.width, source.height)
+        colors.forEachIndexed { index, color ->
+            graphics.color = color
+            graphics.fillRect(1 + index % 3 * 4, 1 + index / 3 * 4, 4, 4)
+        }
+        graphics.dispose()
+        assertTrue(ImageIO.write(source, "webp", sourcePath.toFile()))
+        val loaded = ImageIOService.load(sourcePath)
+
+        val result = OutputExporter.export(
+            loaded,
+            Rotation.ORIGINAL,
+            CropMode.Fine(ImageRect(1, 1, 12, 8)),
+            SplitMode.GRID_3_2,
+            outputDirectory,
+        )
+
+        assertEquals(6, result.files.size)
+        val centers = result.files.map { path ->
+            val tile = ImageIO.read(path.toFile())
+            assertEquals(4, tile.width)
+            assertEquals(4, tile.height)
+            Color(tile.getRGB(2, 2)).rgb
+        }
+        assertEquals(6, centers.distinct().size)
+        assertTrue(centers.none { it == Color.BLACK.rgb })
+    }
+
+    @Test
     fun `any collision rejects the whole export`() {
         val root = createTempDirectory("image-processor-collision-")
         val sourcePath = root.resolve("photo.png")

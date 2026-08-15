@@ -51,7 +51,7 @@ object OutputExporter {
                 onProgress(index + 1, pieces.size)
                 val temporary = Files.createTempFile(outputDirectory, ".imageprocessor-", ".tmp")
                 temporaryFiles.add(temporary)
-                val piece = processed.getSubimage(rect.x, rect.y, rect.width, rect.height)
+                val piece = detachedCopy(processed.getSubimage(rect.x, rect.y, rect.width, rect.height))
                 writeImage(piece, descriptor, temporary)
             }
 
@@ -151,6 +151,21 @@ object OutputExporter {
         val graphics = destination.createGraphics()
         graphics.color = Color.WHITE
         graphics.fillRect(0, 0, destination.width, destination.height)
+        graphics.drawImage(source, 0, 0, null)
+        graphics.dispose()
+        return destination
+    }
+
+    private fun detachedCopy(source: BufferedImage): BufferedImage {
+        val colorModel = source.colorModel
+        val destination = BufferedImage(
+            colorModel,
+            colorModel.createCompatibleWritableRaster(source.width, source.height),
+            colorModel.isAlphaPremultiplied,
+            null,
+        )
+        val graphics = destination.createGraphics()
+        graphics.composite = java.awt.AlphaComposite.Src
         graphics.drawImage(source, 0, 0, null)
         graphics.dispose()
         return destination

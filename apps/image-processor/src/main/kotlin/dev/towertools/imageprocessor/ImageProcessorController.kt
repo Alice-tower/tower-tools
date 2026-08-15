@@ -119,8 +119,17 @@ class ImageProcessorController : AutoCloseable {
         executor.submit {
             runCatching {
                 val directory = PathValidator.requireWritable(rawOutputDirectory)
-                OutputExporter.export(loaded, rotation, cropMode, splitMode, directory) { current, total ->
+                val selectedRotation = rotation
+                val selectedCrop = cropMode
+                val selectedSplit = splitMode
+                AppLog.logger.info(
+                    "Export started: source=${loaded.descriptor.fileName}, rotation=${selectedRotation.token}, " +
+                        "crop=${selectedCrop.token}, split=${selectedSplit.name}, output=$directory",
+                )
+                OutputExporter.export(loaded, selectedRotation, selectedCrop, selectedSplit, directory) { current, total ->
                     EventQueue.invokeLater { progressText = "正在生成 $current/$total" }
+                }.also { summary ->
+                    AppLog.logger.info("Export completed: files=${summary.files.size}")
                 }
             }.onSuccess { summary ->
                 EventQueue.invokeLater {
