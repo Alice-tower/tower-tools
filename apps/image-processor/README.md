@@ -4,14 +4,15 @@
 
 - Project: `ImageProcessor`
 - Application ID: `dev.towertools.imageprocessor`
-- Version: `1.0.1`
+- Version: `1.1.0`
 - Author: `Alice-tower`
 
 ## 功能
 
 - 拖入或选择一张 JPG/JPEG、PNG、BMP、GIF、WebP、TIFF/TIF 图片。
 - 按原始、顺时针 90°、180°、逆时针 90°旋转。
-- 按预设比例或自定义宽高比居中裁剪，不拉伸、不补黑边。
+- 按预设比例居中裁剪，或在精细裁剪窗口中以实际像素调整裁剪框，不拉伸、不补黑边。
+- 精细裁剪支持输入像素宽高、查看相对原图百分比，以及拖动和缩放裁剪框。
 - 按左右、上下、2×2、2×3、3×2、3×3 网格分割。
 - 预览旋转、裁剪、分割共同作用的结果。
 - 将输出目录保存在应用专属的本地配置中。

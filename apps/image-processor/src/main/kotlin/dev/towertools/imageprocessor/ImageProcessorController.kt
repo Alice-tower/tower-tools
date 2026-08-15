@@ -25,8 +25,6 @@ class ImageProcessorController : AutoCloseable {
         private set
     var splitMode by mutableStateOf(SplitMode.ORIGINAL)
         private set
-    var customWidthText by mutableStateOf("")
-    var customHeightText by mutableStateOf("")
     var outputDirectory by mutableStateOf(SettingsStore.load().outputDirectory)
         private set
     var isLoading by mutableStateOf(false)
@@ -54,6 +52,7 @@ class ImageProcessorController : AutoCloseable {
 
     fun selectRotation(value: Rotation) {
         if (!canChangeOptions()) return
+        if (rotation != value && cropMode is CropMode.Fine) cropMode = CropMode.Original
         rotation = value
         rebuildPreview()
     }
@@ -64,11 +63,13 @@ class ImageProcessorController : AutoCloseable {
         rebuildPreview()
     }
 
-    fun selectCustomCrop() {
+    fun confirmFineCrop(rect: ImageRect) {
         if (!canChangeOptions()) return
-        runCatching { CustomRatioParser.parse(customWidthText, customHeightText) }
+        val descriptor = loadedImage?.descriptor ?: return
+        val (width, height) = ImageGeometry.rotatedSize(descriptor.orientedWidth, descriptor.orientedHeight, rotation)
+        runCatching { ImageGeometry.cropRect(width, height, CropMode.Fine(rect)) }
             .onSuccess {
-                cropMode = it
+                cropMode = CropMode.Fine(rect)
                 rebuildPreview()
             }
             .onFailure(::handleFailure)
@@ -160,8 +161,6 @@ class ImageProcessorController : AutoCloseable {
                         rotation = Rotation.ORIGINAL
                         cropMode = CropMode.Original
                         splitMode = SplitMode.ORIGINAL
-                        customWidthText = ""
-                        customHeightText = ""
                         isLoading = false
                         rebuildPreview()
                         showInfo("已加载 ${loaded.descriptor.fileName}。")
@@ -183,8 +182,15 @@ class ImageProcessorController : AutoCloseable {
             return
         }
         runCatching {
+            val descriptor = loadedImage?.descriptor ?: return
             ImageTransforms.splitPreview(
-                ImageTransforms.process(source, rotation, cropMode),
+                ImageTransforms.processPreview(
+                    source,
+                    descriptor.orientedWidth,
+                    descriptor.orientedHeight,
+                    rotation,
+                    cropMode,
+                ),
                 splitMode,
             )
         }.onSuccess {

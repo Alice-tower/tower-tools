@@ -61,4 +61,42 @@ class ImageGeometryTest {
         assertEquals(300 to 200, ImageGeometry.rotatedSize(300, 200, Rotation.DEGREES_180))
         assertEquals(200 to 300, ImageGeometry.rotatedSize(300, 200, Rotation.COUNTERCLOCKWISE_90))
     }
+
+    @Test
+    fun `fine crop keeps its exact pixel rectangle`() {
+        val expected = ImageRect(123, 45, 800, 600)
+        assertEquals(expected, ImageGeometry.cropRect(1920, 1080, CropMode.Fine(expected)))
+    }
+
+    @Test
+    fun `fine crop is mapped safely onto a sampled preview`() {
+        val mapped = ImageGeometry.previewCropMode(
+            CropMode.Fine(ImageRect(1000, 500, 1, 1)),
+            fullWidth = 8000,
+            fullHeight = 4000,
+            previewWidth = 1800,
+            previewHeight = 900,
+        ) as CropMode.Fine
+        assertTrue(mapped.rect.width >= 1)
+        assertTrue(mapped.rect.height >= 1)
+        assertTrue(mapped.rect.x + mapped.rect.width <= 1800)
+        assertTrue(mapped.rect.y + mapped.rect.height <= 900)
+    }
+
+    @Test
+    fun `fine crop dragging stays inside the source and keeps at least one pixel`() {
+        val start = ImageRect(100, 80, 800, 600)
+        assertEquals(
+            ImageRect(200, 200, 800, 600),
+            FineCropGeometry.adjust(start, CropDragHandle.MOVE, 5000, 5000, 1000, 800),
+        )
+        assertEquals(
+            ImageRect(899, 80, 1, 600),
+            FineCropGeometry.adjust(start, CropDragHandle.LEFT, 5000, 0, 1000, 800),
+        )
+        assertEquals(
+            ImageRect(100, 80, 900, 720),
+            FineCropGeometry.adjust(start, CropDragHandle.BOTTOM_RIGHT, 5000, 5000, 1000, 800),
+        )
+    }
 }

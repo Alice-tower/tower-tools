@@ -3,7 +3,7 @@
     "projectName":  "ImageProcessor",
     "displayName":  "图片裁剪与分割",
     "description":  "对单张图片进行旋转、比例裁剪和网格分割，预览后按原格式输出。",
-    "version":  "1.0.1",
+    "version":  "1.1.0",
     "author":  "Alice-tower",
     "uuid":  "be125b00-b46f-4f60-9e80-cdee827d8a42",
     "executableName":  "ImageProcessor.exe"

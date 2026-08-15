@@ -17,15 +17,6 @@ import kotlin.test.assertTrue
 
 class OutputWorkflowTest {
     @Test
-    fun `custom ratio parser creates stable ascii token`() {
-        val ratio = CustomRatioParser.parse("2.350", "1.0")
-        assertEquals("2.35:1", ratio.label)
-        assertEquals("c2p35x1", ratio.token)
-        assertFailsWith<UserFacingException> { CustomRatioParser.parse("0", "1") }
-        assertFailsWith<UserFacingException> { CustomRatioParser.parse("abc", "1") }
-    }
-
-    @Test
     fun `png split export keeps source unchanged and writes ordered pieces`() {
         val root = createTempDirectory("image-processor-test-")
         val sourcePath = root.resolve("示例.png")
@@ -49,6 +40,28 @@ class OutputWorkflowTest {
         )
         result.files.forEach { assertTrue(ImageIO.read(it.toFile()).width > 0) }
         assertContentEquals(originalBytes, Files.readAllBytes(sourcePath))
+    }
+
+    @Test
+    fun `fine crop exports the selected pixel rectangle without scaling`() {
+        val root = createTempDirectory("image-processor-fine-crop-")
+        val sourcePath = root.resolve("精细.png")
+        val outputDirectory = root.resolve("output").createDirectory()
+        writeSamplePng(sourcePath)
+        val loaded = ImageIOService.load(sourcePath)
+
+        val result = OutputExporter.export(
+            loaded,
+            Rotation.CLOCKWISE_90,
+            CropMode.Fine(ImageRect(1, 2, 7, 5)),
+            SplitMode.ORIGINAL,
+            outputDirectory,
+        )
+
+        val output = ImageIO.read(result.files.single().toFile())
+        assertEquals(7, output.width)
+        assertEquals(5, output.height)
+        assertTrue(result.files.single().fileName.toString().contains("r90_cfine_1x2_7x5"))
     }
 
     @Test

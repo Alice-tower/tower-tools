@@ -24,8 +24,12 @@ sealed interface CropMode {
         val widthRatio: Double,
         val heightRatio: Double,
         override val token: String,
-        val custom: Boolean = false,
     ) : CropMode
+
+    data class Fine(val rect: ImageRect) : CropMode {
+        override val label = "精细裁剪"
+        override val token = "cfine_${rect.x}x${rect.y}_${rect.width}x${rect.height}"
+    }
 }
 
 val cropPresets = listOf(

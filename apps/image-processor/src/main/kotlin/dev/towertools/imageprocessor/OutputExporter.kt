@@ -11,30 +11,6 @@ import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 import javax.imageio.stream.FileImageOutputStream
 
-object CustomRatioParser {
-    fun parse(widthText: String, heightText: String): CropMode.Ratio {
-        val width = widthText.trim().toBigDecimalOrNull()
-        val height = heightText.trim().toBigDecimalOrNull()
-        if (width == null || height == null || width.signum() <= 0 || height.signum() <= 0) {
-            throw UserFacingException("自定义比例必须填写两个正数，例如 2.35 : 1。")
-        }
-        if (width > 1_000_000.toBigDecimal() || height > 1_000_000.toBigDecimal()) {
-            throw UserFacingException("自定义比例数值过大。")
-        }
-        val widthValue = width.stripTrailingZeros().toPlainString()
-        val heightValue = height.stripTrailingZeros().toPlainString()
-        val tokenWidth = widthValue.replace('.', 'p')
-        val tokenHeight = heightValue.replace('.', 'p')
-        return CropMode.Ratio(
-            label = "$widthValue:$heightValue",
-            widthRatio = width.toDouble(),
-            heightRatio = height.toDouble(),
-            token = "c${tokenWidth}x${tokenHeight}",
-            custom = true,
-        )
-    }
-}
-
 object OutputNaming {
     fun paths(
         descriptor: SourceDescriptor,

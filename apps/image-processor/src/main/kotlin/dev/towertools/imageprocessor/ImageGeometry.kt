@@ -5,6 +5,7 @@ import java.awt.Color
 import java.awt.RenderingHints
 import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.min
 
@@ -17,8 +18,32 @@ object ImageGeometry {
         }
 
     fun cropRect(width: Int, height: Int, cropMode: CropMode): ImageRect {
-        if (cropMode is CropMode.Original) return ImageRect(0, 0, width, height)
-        cropMode as CropMode.Ratio
+        require(width > 0 && height > 0)
+        return when (cropMode) {
+            CropMode.Original -> ImageRect(0, 0, width, height)
+            is CropMode.Fine -> cropMode.rect.also { require(isInside(it, width, height)) }
+            is CropMode.Ratio -> centeredRatioRect(width, height, cropMode)
+        }
+    }
+
+    fun centeredRect(width: Int, height: Int, cropWidth: Int, cropHeight: Int): ImageRect {
+        require(width > 0 && height > 0)
+        require(cropWidth in 1..width && cropHeight in 1..height)
+        return ImageRect((width - cropWidth) / 2, (height - cropHeight) / 2, cropWidth, cropHeight)
+    }
+
+    fun previewCropMode(
+        cropMode: CropMode,
+        fullWidth: Int,
+        fullHeight: Int,
+        previewWidth: Int,
+        previewHeight: Int,
+    ): CropMode = when (cropMode) {
+        is CropMode.Fine -> CropMode.Fine(scaleRect(cropMode.rect, fullWidth, fullHeight, previewWidth, previewHeight))
+        else -> cropMode
+    }
+
+    private fun centeredRatioRect(width: Int, height: Int, cropMode: CropMode.Ratio): ImageRect {
         require(cropMode.widthRatio.isFinite() && cropMode.widthRatio > 0)
         require(cropMode.heightRatio.isFinite() && cropMode.heightRatio > 0)
 
@@ -35,6 +60,20 @@ object ImageGeometry {
         }
         return ImageRect((width - cropWidth) / 2, (height - cropHeight) / 2, cropWidth, cropHeight)
     }
+
+    private fun scaleRect(rect: ImageRect, fromWidth: Int, fromHeight: Int, toWidth: Int, toHeight: Int): ImageRect {
+        require(isInside(rect, fromWidth, fromHeight))
+        require(toWidth > 0 && toHeight > 0)
+        val left = floor(rect.x.toDouble() * toWidth / fromWidth).toInt().coerceIn(0, toWidth - 1)
+        val top = floor(rect.y.toDouble() * toHeight / fromHeight).toInt().coerceIn(0, toHeight - 1)
+        val right = ceil((rect.x + rect.width).toDouble() * toWidth / fromWidth).toInt().coerceIn(left + 1, toWidth)
+        val bottom = ceil((rect.y + rect.height).toDouble() * toHeight / fromHeight).toInt().coerceIn(top + 1, toHeight)
+        return ImageRect(left, top, right - left, bottom - top)
+    }
+
+    private fun isInside(rect: ImageRect, width: Int, height: Int): Boolean =
+        rect.x >= 0 && rect.y >= 0 && rect.width > 0 && rect.height > 0 &&
+            rect.x.toLong() + rect.width <= width && rect.y.toLong() + rect.height <= height
 
     fun splitRects(width: Int, height: Int, splitMode: SplitMode): List<ImageRect> = buildList {
         for (row in 0 until splitMode.rows) {
@@ -105,6 +144,25 @@ object ImageTransforms {
 
     fun process(source: BufferedImage, rotation: Rotation, cropMode: CropMode): BufferedImage =
         crop(rotate(source, rotation), cropMode)
+
+    fun processPreview(
+        source: BufferedImage,
+        sourceFullWidth: Int,
+        sourceFullHeight: Int,
+        rotation: Rotation,
+        cropMode: CropMode,
+    ): BufferedImage {
+        val rotated = rotate(source, rotation)
+        val (fullWidth, fullHeight) = ImageGeometry.rotatedSize(sourceFullWidth, sourceFullHeight, rotation)
+        val previewMode = ImageGeometry.previewCropMode(
+            cropMode,
+            fullWidth,
+            fullHeight,
+            rotated.width,
+            rotated.height,
+        )
+        return crop(rotated, previewMode)
+    }
 
     fun splitPreview(source: BufferedImage, splitMode: SplitMode): BufferedImage {
         if (splitMode == SplitMode.ORIGINAL) return source

@@ -71,6 +71,7 @@ import kotlin.math.max
 fun ImageProcessorApp(controller: ImageProcessorController, owner: Frame) {
     var outputDraft by remember { mutableStateOf(controller.outputDirectory) }
     var isDraggingOver by remember { mutableStateOf(false) }
+    var fineCropOpen by remember { mutableStateOf(false) }
     val loaded = controller.loadedImage
     val enabled = loaded != null && !controller.isLoading && !controller.isExporting
     val dropTarget = remember(controller) {
@@ -189,34 +190,14 @@ fun ImageProcessorApp(controller: ImageProcessorController, owner: Frame) {
                 cropPresets.forEach { option ->
                     CropOptionButton(option, controller.cropMode, enabled) { controller.selectCrop(option) }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = controller.customWidthText,
-                        onValueChange = { controller.customWidthText = it },
-                        enabled = enabled,
-                        singleLine = true,
-                        label = { Text("宽") },
-                        modifier = Modifier.width(72.dp),
-                    )
-                    Text(":", modifier = Modifier.padding(horizontal = 4.dp))
-                    OutlinedTextField(
-                        value = controller.customHeightText,
-                        onValueChange = { controller.customHeightText = it },
-                        enabled = enabled,
-                        singleLine = true,
-                        label = { Text("高") },
-                        modifier = Modifier.width(72.dp),
-                    )
+                OptionButton(
+                    selected = controller.cropMode is CropMode.Fine,
+                    enabled = enabled,
+                    onClick = { fineCropOpen = true },
+                ) {
+                    AspectIcon(1.6)
                     Spacer(Modifier.width(6.dp))
-                    OptionButton(
-                        selected = (controller.cropMode as? CropMode.Ratio)?.custom == true,
-                        enabled = enabled,
-                        onClick = controller::selectCustomCrop,
-                    ) {
-                        AspectIcon(1.6)
-                        Spacer(Modifier.width(6.dp))
-                        Text("自定义")
-                    }
+                    Text("精细裁剪")
                 }
             }
 
@@ -289,6 +270,30 @@ fun ImageProcessorApp(controller: ImageProcessorController, owner: Frame) {
                     modifier = Modifier.padding(top = 5.dp),
                 )
             }
+        }
+    }
+
+    if (fineCropOpen) {
+        val image = loaded
+        if (image != null) {
+            val rotatedPreview = remember(image.originalPreview, controller.rotation) {
+                ImageTransforms.rotate(image.originalPreview, controller.rotation)
+            }
+            val (sourceWidth, sourceHeight) = ImageGeometry.rotatedSize(
+                image.descriptor.orientedWidth,
+                image.descriptor.orientedHeight,
+                controller.rotation,
+            )
+            FineCropDialog(
+                previewImage = rotatedPreview,
+                sourceWidth = sourceWidth,
+                sourceHeight = sourceHeight,
+                onConfirm = { rect ->
+                    controller.confirmFineCrop(rect)
+                    fineCropOpen = false
+                },
+                onCancel = { fineCropOpen = false },
+            )
         }
     }
 }
@@ -439,7 +444,7 @@ private fun Modifier.checkerboard(): Modifier = drawBehind {
     }
 }
 
-private fun BufferedImage.asComposeImageBitmap(): ImageBitmap {
+internal fun BufferedImage.asComposeImageBitmap(): ImageBitmap {
     val bytes = ByteArrayOutputStream().use { output ->
         ImageIO.write(this, "png", output)
         output.toByteArray()
