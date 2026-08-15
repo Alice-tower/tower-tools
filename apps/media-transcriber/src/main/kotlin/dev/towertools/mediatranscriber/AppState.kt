@@ -43,7 +43,16 @@ class ControllerStateMachine(initial: AppState = AppState()) {
         state = state.copy(phase = phase, media = info, progress = null, progressText = "就绪")
     }
 
-    fun taskStarted(phase: TaskPhase) { require(phase in setOf(TaskPhase.EXTRACTING_MP3, TaskPhase.PREPARING_AUDIO, TaskPhase.TRANSCRIBING)); state = state.copy(phase = phase) }
+    fun taskStarted(phase: TaskPhase) {
+        require(phase in setOf(TaskPhase.EXTRACTING_MP3, TaskPhase.PREPARING_AUDIO, TaskPhase.TRANSCRIBING))
+        val progressText = when (phase) {
+            TaskPhase.EXTRACTING_MP3 -> "正在导出 MP3"
+            TaskPhase.PREPARING_AUDIO -> "正在准备 16 kHz 音频"
+            TaskPhase.TRANSCRIBING -> "正在转写"
+            else -> error("不支持的任务阶段：$phase")
+        }
+        state = state.copy(phase = phase, progress = null, progressText = progressText)
+    }
     fun cancelComplete() { state = state.copy(phase = readyPhase(), progress = null, progressText = "任务已取消") }
     fun fail(message: String) { state = state.copy(phase = TaskPhase.ERROR, progress = null, progressText = message) }
     fun updateDependencies(value: DependencyStatus) { state = state.copy(dependencies = value) }

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.awt.Desktop
+import java.awt.EventQueue
 import java.awt.FileDialog
 import java.awt.Frame
 import java.awt.Toolkit
@@ -46,7 +47,9 @@ fun MediaTranscriberApp(controller: MediaTranscriberController, owner: Frame) {
         override fun onDrop(event: DragAndDropEvent): Boolean {
             dragging = false
             val files = (event.dragData() as? DragData.FilesList)?.readFiles() ?: return false
-            controller.loadFiles(DroppedFiles.parse(files)); return true
+            val paths = DroppedFiles.parse(files)
+            EventQueue.invokeLater { controller.loadFiles(paths) }
+            return true
         }
     } }
 

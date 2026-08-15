@@ -1,7 +1,6 @@
 package dev.towertools.mediatranscriber
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.awt.Desktop
@@ -22,7 +21,6 @@ class MediaTranscriberController(
     private val workspaceManager: TaskWorkspace = TaskWorkspace(),
 ) : AutoCloseable {
     private val executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "media-transcriber-worker").apply { isDaemon = true } }
-    private val insideStateUpdate = ThreadLocal.withInitial { false }
     private val currentCancellation = AtomicReference<CancellationHandle?>()
     private val cancelCompletion = AtomicReference<Pair<CancellationHandle, () -> Unit>?>(null)
     private val probeParser = MediaProbeParser()
@@ -228,14 +226,7 @@ class MediaTranscriberController(
     }
 
     private fun onUi(action: () -> Unit) {
-        if (EventQueue.isDispatchThread() || insideStateUpdate.get()) {
-            action()
-        } else {
-            Snapshot.withMutableSnapshot {
-                insideStateUpdate.set(true)
-                try { action() } finally { insideStateUpdate.set(false) }
-            }
-        }
+        if (EventQueue.isDispatchThread()) action() else EventQueue.invokeLater(action)
     }
     private fun publish() { state = machine.state }
     override fun close() { currentCancellation.get()?.cancel(); executor.shutdown() }
