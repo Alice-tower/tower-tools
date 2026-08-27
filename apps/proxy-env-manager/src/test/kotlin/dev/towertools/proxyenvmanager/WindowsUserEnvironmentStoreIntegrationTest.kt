@@ -15,15 +15,23 @@ class WindowsUserEnvironmentStoreIntegrationTest {
 
         try {
             assertEquals(
-                ProxyEnvironment(ProxyVariables.LOCAL_PROXY, ProxyVariables.LOCAL_PROXY),
+                ProxyEnvironment(
+                    ProxyVariables.LOCAL_HTTP_PROXY,
+                    ProxyVariables.LOCAL_HTTP_PROXY,
+                    ProxyVariables.LOCAL_ALL_PROXY,
+                    ProxyVariables.LOCAL_NO_PROXY,
+                ),
                 service.setLocalProxy(),
             )
             assertNull(service.clear().httpProxy)
             assertNull(service.read().httpsProxy)
+            assertNull(service.read().allProxy)
+            assertNull(service.read().noProxy)
         } finally {
             restore(store, ProxyVariables.HTTP_PROXY, original.httpProxy)
             restore(store, ProxyVariables.HTTPS_PROXY, original.httpsProxy)
-            store.broadcastChange()
+            restore(store, ProxyVariables.ALL_PROXY, original.allProxy)
+            restore(store, ProxyVariables.NO_PROXY, original.noProxy)
         }
 
         assertEquals(original, service.read())
