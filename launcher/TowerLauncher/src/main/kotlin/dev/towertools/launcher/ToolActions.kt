@@ -1,15 +1,20 @@
 package dev.towertools.launcher
 
 import java.awt.Desktop
+import java.io.File
 import java.nio.file.Files
 
 object ToolActions {
     fun launch(tool: LauncherTool) {
         require(Files.isRegularFile(tool.executable)) { "找不到可执行文件：${tool.executable}" }
-        ProcessBuilder(tool.executable.toString())
-            .directory(tool.executable.parent.toFile())
-            .start()
+        processBuilder(tool).start()
     }
+
+    internal fun processBuilder(tool: LauncherTool): ProcessBuilder = ProcessBuilder(tool.executable.toString())
+        .directory(tool.executable.parent.toFile())
+        .redirectInput(ProcessBuilder.Redirect.from(File("NUL")))
+        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+        .redirectError(ProcessBuilder.Redirect.DISCARD)
 
     fun openDirectory(tool: LauncherTool) {
         require(Files.isDirectory(tool.executable.parent)) { "找不到工具目录：${tool.executable.parent}" }

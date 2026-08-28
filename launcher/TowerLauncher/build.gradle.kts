@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.towertools.launcher"
-version = "1.0.0"
+version = "1.0.2"
 
 kotlin {
     jvmToolchain(21)
@@ -29,7 +29,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "TowerLauncher"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.2"
             vendor = "Alice-tower"
         }
     }

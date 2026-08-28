@@ -1,7 +1,5 @@
 package dev.towertools.mediatranscriber
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -39,16 +37,11 @@ import javax.swing.JFileChooser
 fun MediaTranscriberApp(controller: MediaTranscriberController, owner: Frame) {
     val state = controller.state
     var settingsOpen by remember { mutableStateOf(false) }
-    var dragging by remember { mutableStateOf(false) }
     val dropTarget = remember(controller) { object : DragAndDropTarget {
-        override fun onEntered(event: DragAndDropEvent) { dragging = true }
-        override fun onExited(event: DragAndDropEvent) { dragging = false }
-        override fun onEnded(event: DragAndDropEvent) { dragging = false }
         override fun onDrop(event: DragAndDropEvent): Boolean {
-            dragging = false
             val files = (event.dragData() as? DragData.FilesList)?.readFiles() ?: return false
             val paths = DroppedFiles.parse(files)
-            EventQueue.invokeLater { controller.loadFiles(paths) }
+            EventQueue.invokeLater { controller.loadDroppedFiles(paths) }
             return true
         }
     } }
@@ -57,7 +50,6 @@ fun MediaTranscriberApp(controller: MediaTranscriberController, owner: Frame) {
 
     Column(
         Modifier.fillMaxSize()
-            .then(if (dragging) Modifier.border(3.dp, MaterialTheme.colors.primary) else Modifier)
             .dragAndDropTarget({ it.dragData() is DragData.FilesList }, dropTarget)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),

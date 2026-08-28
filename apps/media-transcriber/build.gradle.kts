@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.towertools.mediatranscriber"
-version = "1.0.0"
+version = "1.0.1"
 
 kotlin {
     jvmToolchain(21)
@@ -39,7 +39,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "MediaTranscriber"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
             vendor = "Alice-tower"
         }
     }

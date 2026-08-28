@@ -15,5 +15,26 @@ class ControllerStateTest {
         assertNull(m.state.progress)
         assertEquals("正在转写", m.state.progressText)
     }
-    @Test fun cudaFailureOnlyDisablesTranscription() { val deps=DependencyStatus(mediaAvailable=true,cudaAvailable=false,modelExists=true,outputAvailable=true); val m=ControllerStateMachine(AppState(media=media(MediaKind.VIDEO,true),phase=TaskPhase.READY_VIDEO,dependencies=deps)); assertTrue(m.state.canExportMp3); assertFalse(m.state.canTranscribe) }
+    @Test fun cudaFailureOnlyDisablesTranscription() { val deps=DependencyStatus(mediaAvailable=true,cudaAvailable=false,modelExists=true,outputAvailable=true); val m=ControllerStateMachine(AppState(media=media(MediaKind.VIDEO,true),phase=TaskPhase.READY_VIDEO,dependencyCheckPhase=DependencyCheckPhase.COMPLETE,dependencies=deps)); assertTrue(m.state.canExportMp3); assertFalse(m.state.canTranscribe) }
+    @Test fun dependencyCheckClearsStaleCapabilitiesUntilResultIsPublished() {
+        val available = DependencyStatus(mediaAvailable = true, outputAvailable = true)
+        val m = ControllerStateMachine(AppState(
+            phase = TaskPhase.READY_VIDEO,
+            media = media(MediaKind.VIDEO, true),
+            dependencyCheckPhase = DependencyCheckPhase.COMPLETE,
+            dependencies = available,
+        ))
+        assertTrue(m.state.canExportMp3)
+
+        m.beginDependencyCheck()
+        assertEquals(DependencyCheckPhase.CHECKING, m.state.dependencyCheckPhase)
+        assertFalse(m.state.dependencies.mediaAvailable)
+        assertFalse(m.state.canExportMp3)
+        assertEquals("正在检测运行环境", m.state.progressText)
+
+        m.completeDependencyCheck(available)
+        assertEquals(DependencyCheckPhase.COMPLETE, m.state.dependencyCheckPhase)
+        assertTrue(m.state.canExportMp3)
+        assertEquals("就绪", m.state.progressText)
+    }
 }

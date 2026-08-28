@@ -3,7 +3,7 @@
     "projectName":  "MediaTranscriber",
     "displayName":  "影音转写",
     "description":  "从视频提取 MP3，并使用本地 Whisper CUDA 模型将音频转写为 TXT。",
-    "version":  "1.0.0",
+    "version":  "1.0.1",
     "author":  "Alice-tower",
     "uuid":  "aaafcf90-5b31-4f86-9b40-a56e91357010",
     "executableName":  "MediaTranscriber.exe"
