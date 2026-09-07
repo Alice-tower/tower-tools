@@ -1,36 +1,36 @@
-# Architecture
+# 架构
 
-## Goals
+## 目标
 
-Tower Tools is a monorepo of independent Windows x64 desktop applications. Each tool can be opened on its own in IntelliJ IDEA, built independently, and copied as a portable directory without installing Java on the target machine.
+Tower Tools 是由相互独立的 Windows x64 桌面应用组成的 monorepo。每个工具均可在 IntelliJ IDEA 中单独打开、独立构建，并作为便携目录复制到未安装 Java 的目标机器运行。
 
-## Projects
+## 项目
 
-Each project is a single-module Kotlin/JVM application using Compose Desktop. Multiplatform source sets and non-Windows packaging are intentionally excluded. Google Maven is retained only because current Compose Desktop artifacts depend on AndroidX foundation components; no Android target is configured.
+每个项目都是单模块 Kotlin/JVM 应用，使用 Compose Desktop。为保持范围明确，刻意不采用 Multiplatform source set，也不支持非 Windows 打包。保留 Google Maven 的唯一原因是当前 Compose Desktop artifact 依赖 AndroidX foundation component；项目未配置 Android target。
 
-The source projects are independent Gradle builds so the repository remains responsive as the number of tools grows. Gradle Wrapper files are copied into every generated project to preserve reproducible standalone builds.
+源项目使用彼此独立的 Gradle build，以便工具数量增加时仓库仍保持响应迅速。每个生成项目都复制 Gradle Wrapper 文件，以保留可复现且可独立执行的构建。
 
-## Runtime data
+## 运行时数据
 
-Program binaries are replaceable. Mutable data is not stored beside an executable.
+程序二进制文件可以替换；可变数据不得存放在可执行文件旁。
 
-- Tool data: `%LOCALAPPDATA%\Alice-tower\TowerTools\<application-id>\`
-- Launcher data: `%LOCALAPPDATA%\Alice-tower\TowerLauncher\`
-- Logs are stored below each application's data directory in `logs/`.
+- 工具数据：`%LOCALAPPDATA%\Alice-tower\TowerTools\<application-id>\`
+- 启动器数据：`%LOCALAPPDATA%\Alice-tower\TowerLauncher\`
+- 日志位于各应用数据目录下的 `logs/`。
 
-## Portable output
+## 便携输出
 
-`outputs/` is the only release location and is ignored by Git:
+`outputs/` 是唯一的发布位置，且已被 Git 忽略：
 
 ```text
 outputs/
-  launcher/               TowerLauncher.exe plus runtime files
-  tools/<application-id>/ Tool.exe plus runtime files
-  catalog/tools.json      generated runtime catalog
+  launcher/               TowerLauncher.exe 和 runtime 文件
+  tools/<application-id>/ Tool.exe 和 runtime 文件
+  catalog/tools.json      生成的运行时目录
 ```
 
-Catalog executable paths are relative to `outputs/`, so the complete directory can be moved without editing paths.
+目录中的可执行文件路径相对于 `outputs/`，因此无需修改路径即可整体移动该目录。
 
-## Single-instance behavior
+## 单实例行为
 
-Every application uses a per-user lock file and a loopback activation channel derived from its stable application ID. A second process asks the first process to restore and focus its window, then exits.
+每个应用都会使用由稳定 Application ID 派生的按用户 lock file 与 loopback activation channel。第二个进程会请求第一个进程恢复并聚焦其窗口，随后退出。

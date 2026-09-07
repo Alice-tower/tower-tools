@@ -1,21 +1,21 @@
-# Tool lifecycle
+# 工具生命周期
 
-## Create
+## 创建
 
-Use `scripts/New-Tool.ps1` through the PowerShell invocation documented in `docs/build-environment.md`. The script validates identity fields, copies the template, replaces explicit tokens, moves Kotlin sources into the package path, creates metadata, builds a portable directory, synchronizes the catalog, and rebuilds the launcher.
+请按照 `docs/build-environment.md` 中的 PowerShell 调用方式运行 `scripts/New-Tool.ps1`。该脚本会验证标识字段、复制模板、替换显式 token、将 Kotlin 源文件移动到 package path、创建元数据、构建便携目录、同步目录并重新构建启动器。
 
-The command accepts interactive input when a required value is omitted. Codex normally proposes the display name, project name, description, and ID before invoking it.
+缺少必填值时，命令会接受交互式输入。Codex 通常会在调用前提出 display name、project name、description 与 ID。
 
-## Update
+## 更新
 
-Edit the independent project below `apps/`, increment its version in `tool.json` and `build.gradle.kts`, then run `scripts/Build-Tool.ps1`. Builds are incremental by default; pass `-Clean` only when a clean rebuild is needed. A successful build replaces only the program directory. User configuration and logs remain in `%LOCALAPPDATA%`.
+编辑 `apps/` 下的独立项目，在 `tool.json` 与 `build.gradle.kts` 中递增版本，然后运行 `scripts/Build-Tool.ps1`。构建默认采用增量模式；仅在需要干净重建时传入 `-Clean`。成功构建只会替换程序目录，用户配置和日志仍保留在 `%LOCALAPPDATA%`。
 
-## Remove
+## 删除
 
-Use `scripts/Remove-Tool.ps1`. It prints exact source and output paths, requires confirmation unless `-Force` is explicitly supplied, validates that deletion targets remain inside the repository, removes the catalog entry and portable output, and rebuilds the launcher.
+请使用 `scripts/Remove-Tool.ps1`。该脚本会显示精确的源路径与输出路径；除非明确传入 `-Force`，否则需要确认。它会验证删除目标始终位于仓库内、删除目录条目和便携输出，并重新构建启动器。
 
-Launcher user overrides are deliberately retained when a tool is removed, allowing its category and order to return if the same stable ID is restored later.
+删除工具时会刻意保留启动器的用户 override，以便将来恢复同一稳定 ID 时，原分类与排序仍可恢复。
 
-## Failure behavior
+## 失败行为
 
-Builds are assembled under `outputs/.staging/`. Existing portable output is replaced only after a new application image is complete. If a running executable locks the old directory, the operation stops with a clear error instead of terminating the application.
+构建会在 `outputs/.staging/` 下组装。仅在新的 application image 完成后才替换现有便携输出。如果正在运行的可执行文件锁定旧目录，操作会以清晰错误停止，而不会终止该应用。

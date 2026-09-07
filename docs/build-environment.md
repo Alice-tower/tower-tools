@@ -1,27 +1,27 @@
-# Build environment
+# 构建环境
 
-## Required software
+## 必备软件
 
-- Windows 10 or newer, x64
+- Windows 10 或更新版本，x64
 - Azul Zulu JDK 21 x64
-- PowerShell 5.1 or newer
-- Internet access for the first Gradle dependency resolution
-- IntelliJ IDEA is recommended but not required by the scripts
+- PowerShell 5.1 或更新版本
+- 首次 Gradle dependency resolution 所需的 Internet 访问
+- 建议使用 IntelliJ IDEA，但脚本不依赖它
 
-The scripts read `JAVA_HOME` from the current process, user environment, or machine environment. They fail with setup guidance if a Java 21 installation cannot be found.
+脚本会从当前进程、用户环境或机器环境读取 `JAVA_HOME`。如果找不到 Java 21 安装，会显示配置指引并失败。
 
-## Repository build cache
+## 仓库构建缓存
 
-Lifecycle scripts set `GRADLE_USER_HOME` to the ignored `.gradle-user-home/` directory at the repository root. The launcher and every independent tool therefore reuse one Gradle distribution, dependency cache, Compose packaging tools, and local build cache without relying on Java's machine-dependent `user.home` value.
+生命周期脚本会将 `GRADLE_USER_HOME` 设置为仓库根目录中被 Git 忽略的 `.gradle-user-home/`。因此，启动器与每个独立工具会共用一份 Gradle distribution、dependency cache、Compose packaging tool 和本地 build cache，而不依赖 Java 与机器相关的 `user.home` 值。
 
-Gradle Wrapper downloads use a 120-second network timeout. Internet access is still required to populate a cold cache, but later builds reuse downloaded artifacts.
+Gradle Wrapper 下载的网络超时为 120 秒。填充冷缓存仍需要 Internet 访问，之后的构建会复用已下载 artifact。
 
-Build scripts are incremental by default. Pass `-Clean` to `Build-Tool.ps1`, `Build-Launcher.ps1`, or `Build-All.ps1` only when a clean rebuild is required for diagnosis or verification.
+构建脚本默认采用增量模式。仅在诊断或验证时确实需要干净重建，才向 `Build-Tool.ps1`、`Build-Launcher.ps1` 或 `Build-All.ps1` 传入 `-Clean`。
 
-On machines that block unsigned PowerShell scripts, invoke lifecycle commands with `powershell.exe -NoProfile -ExecutionPolicy Bypass -File`. This changes policy only for that child process. Managed automation sandboxes may additionally require build permission because Gradle runs Java child processes and writes project build directories.
+若机器阻止未签名的 PowerShell script，请使用 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` 调用生命周期命令。这只会修改该 child process 的策略。受管 automation sandbox 还可能需要构建权限，因为 Gradle 会运行 Java child process 并写入项目的 build 目录。
 
-## Portable packaging
+## 便携打包
 
-Compose Desktop's `createDistributable` task creates a Windows application image containing an `.exe`, application libraries, and a trimmed Java runtime. It is a directory, not a single-file executable, and must be copied as a unit.
+Compose Desktop 的 `createDistributable` task 会创建 Windows application image，其中包含 `.exe`、应用 library 和精简 Java runtime。它是一个目录而非单文件可执行程序，必须整体复制。
 
-No MSI, shortcuts, signing, or automatic update mechanism is configured.
+未配置 MSI、shortcut、signing 或自动更新机制。

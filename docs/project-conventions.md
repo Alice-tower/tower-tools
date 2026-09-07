@@ -1,37 +1,37 @@
-# Project conventions
+# 项目约定
 
-## Technology
+## 技术栈
 
-- Windows 10 or newer, x64
+- Windows 10 或更新版本，x64
 - JDK 21 toolchain
 - Kotlin/JVM
 - Compose Desktop
-- Stable dependencies where practical
-- UTF-8 source files
+- 在可行时使用稳定依赖
+- UTF-8 源文件
 
-## Identity
+## 标识
 
-Every tool has four distinct identity fields:
+每个工具包含四个不同的标识字段：
 
-- `displayName`: Chinese user-facing name.
-- `projectName`: PascalCase English name used for the Gradle project and executable.
-- `id`: stable lowercase application ID below `dev.towertools`.
-- `directoryName`: kebab-case source directory below `apps/`.
+- `displayName`：面向用户的中文名称。
+- `projectName`：用于 Gradle 项目和可执行文件的 PascalCase 英文名称。
+- `id`：位于 `dev.towertools` 下、稳定的小写 Application ID。
+- `directoryName`：位于 `apps/` 下的 kebab-case 源目录名称。
 
-The Kotlin package and Gradle group equal the application ID. IDs must never be reused for a different tool or changed after release.
+Kotlin package 与 Gradle group 均等于 Application ID。ID 发布后不得复用给其他工具，也不得修改。
 
-The author/vendor is `Alice-tower`. No open-source license is added by default.
+作者/vendor 为 `Alice-tower`。默认不添加开源许可证。
 
-## Versions
+## 版本
 
-Applications begin at `1.0.0` and use semantic versions. Portable outputs replace the previous output for the same application ID after a successful staged build.
+应用从 `1.0.0` 开始，并使用 semantic version。成功完成 staged build 后，同一 Application ID 的便携输出会替换旧输出。
 
-## User interface
+## 用户界面
 
-All tools expose a GUI. The default template provides a Chinese interface, system light/dark theme support, standard window sizing, a visible error surface, logging, and single-instance activation.
+所有工具必须提供 GUI。默认模板提供中文界面、系统明暗主题支持、标准窗口尺寸、可见的错误区域、日志与单实例激活。
 
-Small applications should stay structurally simple. Add architectural layers only when the feature set requires them.
+小型应用应尽量保持结构简单；只有在功能集需要时才添加架构层。
 
-## Agent instructions
+## Agent 指令
 
-All projects inherit the repository-level `AGENTS.md`. Do not create another `AGENTS.md` inside every tool by default. Add a tool-specific file only when that tool has lasting rules or constraints that differ from the repository defaults.
+所有项目均继承仓库级 `AGENTS.md`。默认不要在每个工具内创建另一个 `AGENTS.md`；仅当某个工具具有不同于仓库默认规则的长期约束时，才添加工具专属文件。

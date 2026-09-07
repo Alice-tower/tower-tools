@@ -2,10 +2,10 @@
 
 从视频提取 MP3，并使用本地 Whisper CUDA 模型将音频转写为 TXT。
 
-- Project: `MediaTranscriber`
-- Application ID: `dev.towertools.mediatranscriber`
-- Version: `1.0.0`
-- Author: `Alice-tower`
+- 项目：`MediaTranscriber`
+- Application ID：`dev.towertools.mediatranscriber`
+- 版本：`1.0.1`
+- 作者：`Alice-tower`
 
 ## 使用
 
@@ -36,4 +36,4 @@
 .\gradlew.bat createDistributable
 ```
 
-The repository lifecycle scripts copy the resulting Windows application image into the shared `outputs/` directory.
+仓库生命周期脚本会将生成的 Windows application image 复制到共享的 `outputs/` 目录。

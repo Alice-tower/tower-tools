@@ -2,21 +2,21 @@
 
 __APP_DESCRIPTION__
 
-- Project: `__APP_PROJECT_NAME__`
-- Application ID: `__APP_ID__`
-- Version: `__APP_VERSION__`
-- Author: `Alice-tower`
+- 项目：`__APP_PROJECT_NAME__`
+- Application ID：`__APP_ID__`
+- 版本：`__APP_VERSION__`
+- 作者：`Alice-tower`
 
-## Run
+## 运行
 
 ```powershell
 .\gradlew.bat run
 ```
 
-## Build portable directory
+## 构建便携目录
 
 ```powershell
 .\gradlew.bat createDistributable
 ```
 
-The repository lifecycle scripts copy the resulting Windows application image into the shared `outputs/` directory.
+仓库生命周期脚本会将生成的 Windows application image 复制到共享的 `outputs/` 目录。

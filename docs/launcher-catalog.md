@@ -1,10 +1,10 @@
-# Launcher catalog
+# 启动器目录
 
-The launcher merges generated program metadata with persistent user overrides.
+启动器会合并生成的程序元数据与持久化的用户 override。
 
-## Generated catalog
+## 生成的目录
 
-`outputs/catalog/tools.json` is regenerated from `apps/*/tool.json`. A typical entry contains:
+`outputs/catalog/tools.json` 会根据 `apps/*/tool.json` 重新生成。典型条目如下：
 
 ```json
 {
@@ -19,11 +19,11 @@ The launcher merges generated program metadata with persistent user overrides.
 }
 ```
 
-Paths are relative to the `outputs/` directory. The source-side `catalog/tools.json` is deterministic and contains the same logical tool registrations without build timestamps.
+路径相对于 `outputs/` 目录。源端 `catalog/tools.json` 具有确定性，包含同样的逻辑工具注册信息，但不包含 build timestamp。
 
-## User overrides
+## 用户 override
 
-`%LOCALAPPDATA%\Alice-tower\TowerLauncher\user-settings.json` stores only user-owned values keyed by stable tool ID:
+`%LOCALAPPDATA%\Alice-tower\TowerLauncher\user-settings.json` 仅保存按稳定工具 ID 归属的用户设置：
 
 ```json
 {
@@ -36,10 +36,10 @@ Paths are relative to the `outputs/` directory. The source-side `catalog/tools.j
 }
 ```
 
-Packaging never writes this file. Missing overrides fall back to category `未分类` and order `0`. Tools sort by ascending order and then by display name.
+打包永不写入此文件。缺少 override 时，回退为分类 `未分类` 和排序 `0`。工具按 order 升序排序，随后按 display name 排序。
 
-## Launcher interface
+## 启动器界面
 
-The launcher uses a category sidebar and a compact tool list designed for larger collections. Category counts and each tool's effective order are always visible. Use the tool's right-click menu and select `编辑分类和排序` to change both values; the dialog can reuse an existing category and shows the order values of other tools in that category for comparison. Saving updates `user-settings.json` and immediately reloads the list. An empty category is normalized to `未分类`; order accepts any integer, including negative values.
+启动器使用分类侧边栏与紧凑工具列表，适合较大的工具集合。分类数量与每个工具的有效 order 始终可见。通过工具的右键菜单选择“编辑分类和排序”即可同时修改两者；对话框可复用已有分类，并显示该分类中其他工具的 order 以供比较。保存后会更新 `user-settings.json` 并立即重新加载列表。空分类会规范为 `未分类`；order 可接受任意整数，包括负数。
 
-Double-clicking a row or pressing its `启动` button launches the tool. The remaining right-click actions open the portable directory or the tool's log directory. The launcher intentionally has no installation, update, shortcut, search, drag-ordering, or window-state system.
+双击条目或点击其 `启动` 按钮可启动工具。其余右键操作可打开便携目录或工具日志目录。启动器刻意不提供安装、更新、shortcut、搜索、drag-ordering 或 window-state system。

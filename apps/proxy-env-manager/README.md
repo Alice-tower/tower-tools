@@ -12,27 +12,27 @@
 
 已经运行的程序通常需要重新启动后才会读取新值。
 
-## Run from this project
+## 从当前项目运行
 
 ```powershell
 .\gradlew.bat run
 ```
 
-## Publish the portable directory
+## 发布便携目录
 
-From the repository root, run:
+在仓库根目录运行：
 
 ```powershell
-.\scripts\Build-Tool.ps1 -Id "dev.towertools.proxyenvmanager"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Tool.ps1 -Id "dev.towertools.proxyenvmanager"
 ```
 
-The published application is written to:
+发布后的应用位于：
 
 ```text
 outputs/tools/dev.towertools.proxyenvmanager/
 ```
 
-For a project-local Compose application image that is not published to `outputs/`, run:
+如需创建不发布到 `outputs/` 的项目本地 Compose application image，请运行：
 
 ```powershell
 .\gradlew.bat createDistributable

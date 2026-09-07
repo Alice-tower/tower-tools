@@ -2,21 +2,21 @@
 
 集中浏览并启动 Tower Tools 便携工具。
 
-- Project: `TowerLauncher`
-- Application ID: `dev.towertools.launcher`
-- Version: `1.0.0`
-- Author: `Alice-tower`
+- 项目：`TowerLauncher`
+- Application ID：`dev.towertools.launcher`
+- 版本：`1.0.2`
+- 作者：`Alice-tower`
 
-## Run
+## 运行
 
 ```powershell
 .\gradlew.bat run
 ```
 
-## Build portable directory
+## 构建便携目录
 
 ```powershell
 .\gradlew.bat createDistributable
 ```
 
-The repository lifecycle scripts copy the resulting Windows application image into the shared `outputs/` directory.
+仓库生命周期脚本会将生成的 Windows application image 复制到共享的 `outputs/` 目录。

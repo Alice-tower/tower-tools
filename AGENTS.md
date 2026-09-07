@@ -1,18 +1,19 @@
-# Tower Tools repository rules
+# Tower Tools 仓库规则
 
-- This repository contains personal Windows x64 GUI tools written with Kotlin/JVM and Compose Desktop.
-- Every tool must present a GUI, even when its primary work is command-line oriented.
-- New tools live under `apps/` and must be created with `scripts/New-Tool.ps1` from `template/windows-compose-app`.
-- Tools must be removed with `scripts/Remove-Tool.ps1`; add/remove/rename operations must keep the launcher catalog in sync and rebuild the launcher portable output.
-- Application IDs are stable and use the `dev.towertools.*` namespace. Do not change a released ID.
-- Portable outputs belong only under `outputs/` and must never be committed.
-- Runtime configuration and logs belong under `%LOCALAPPDATA%\Alice-tower\...`; rebuilding must not overwrite user data.
-- Invoke lifecycle scripts through `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` so repository work does not depend on the machine's PowerShell execution policy.
-- Lifecycle scripts own the shared Gradle user home at `.gradle-user-home/`; do not override `GRADLE_USER_HOME` for repository builds.
-- In a managed sandbox, request build permission before running a lifecycle script that invokes Gradle instead of waiting for Gradle child-process writes to fail.
-- Read the relevant document under `docs/` before changing architecture, naming, the catalog, lifecycle scripts, or build behavior.
+- 本仓库收录面向 Windows x64 的个人 GUI 工具，使用 Kotlin/JVM 与 Compose Desktop 编写。
+- 每个工具都必须提供 GUI，即使其核心功能本质上是命令行工作流。
+- 新工具必须位于 `apps/` 下，并通过 `scripts/New-Tool.ps1` 及 `template/windows-compose-app` 创建。
+- 工具必须通过 `scripts/Remove-Tool.ps1` 删除；新增、删除或重命名工具时，必须同步启动器目录并重新构建启动器的便携输出。
+- Application ID 必须稳定，并使用 `dev.towertools.*` 命名空间。已发布的 ID 不得变更。
+- 便携输出只能位于 `outputs/`，且不得提交到 Git。
+- 运行时配置和日志必须位于 `%LOCALAPPDATA%\Alice-tower\...`；重新构建不得覆盖用户数据。
+- 必须通过 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` 调用生命周期脚本，避免仓库工作依赖机器的 PowerShell 执行策略。
+- 生命周期脚本拥有位于 `.gradle-user-home/` 的共享 Gradle user home；不得为仓库构建覆盖 `GRADLE_USER_HOME`。
+- 在受管沙箱中，运行会调用 Gradle 的生命周期脚本前，必须先请求构建权限，不得等到 Gradle 子进程写入失败后才处理。
+- 修改架构、命名、目录、生命周期脚本或构建行为前，必须先阅读 `docs/` 下的相关文档。
+- 每次完成会改变项目行为、工具元数据、版本或仓库结构的 Git 提交后，必须检查根目录 `README.md` 与每个受影响组件（`apps/` 或 `launcher/` 下）的 README。若提交使文档不再准确，必须在后续提交中更新；仅文档变更的提交无需再次检查。
 
-Detailed references:
+详细参考：
 
 - `docs/architecture.md`
 - `docs/project-conventions.md`

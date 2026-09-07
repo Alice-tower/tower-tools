@@ -2,10 +2,10 @@
 
 对单张图片进行旋转、比例裁剪和网格分割，在左右预览确认后按原格式输出。工具不会修改原图片。
 
-- Project: `ImageProcessor`
-- Application ID: `dev.towertools.imageprocessor`
-- Version: `1.1.1`
-- Author: `Alice-tower`
+- 项目：`ImageProcessor`
+- Application ID：`dev.towertools.imageprocessor`
+- 版本：`1.1.1`
+- 作者：`Alice-tower`
 
 ## 功能
 
@@ -20,13 +20,13 @@
 
 动态 GIF、动态 WebP 和多页 TIFF 会被明确拒绝，避免静默丢失帧或页面。
 
-## Run
+## 运行
 
 ```powershell
 .\gradlew.bat run
 ```
 
-## Build portable directory
+## 构建便携目录
 
 ```powershell
 .\gradlew.bat createDistributable
