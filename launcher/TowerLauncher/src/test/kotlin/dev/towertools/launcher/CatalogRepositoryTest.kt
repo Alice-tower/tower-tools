@@ -5,8 +5,73 @@ import kotlin.io.path.createTempDirectory
 import kotlin.io.path.deleteRecursively
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import java.io.IOException
 
 class CatalogRepositoryTest {
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun malformedSettingsAreNotOverwrittenByAnEdit() {
+        val root = createTempDirectory("tower-launcher-corrupt-test")
+        try {
+            val settings = root.resolve("user-settings.json")
+            val original = "{\"tools\": {broken"
+            Files.writeString(settings, original)
+            val repository = CatalogRepository(root, root.resolve("catalog.json"), settings)
+
+            assertFailsWith<IllegalStateException> {
+                repository.updateOverride("dev.towertools.sample", "网络工具", 10)
+            }
+            assertEquals(original, Files.readString(settings))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun failedWritePreservesOriginalSettingsAndRemovesTemporaryFile() {
+        val root = createTempDirectory("tower-launcher-write-failure-test")
+        try {
+            val settings = root.resolve("user-settings.json")
+            val original = "{\"tools\":{}}"
+            Files.writeString(settings, original)
+
+            assertFailsWith<IOException> {
+                writeSettingsAtomically(settings, "new settings") { path, _ ->
+                    Files.writeString(path, "partial")
+                    throw IOException("simulated write failure")
+                }
+            }
+            assertEquals(original, Files.readString(settings))
+            Files.list(root).use { assertEquals(listOf(settings), it.toList()) }
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun editingExistingSettingsPreservesOtherTools() {
+        val root = createTempDirectory("tower-launcher-replace-test")
+        try {
+            val catalog = root.resolve("catalog.json")
+            val settings = root.resolve("user-settings.json")
+            Files.writeString(catalog, catalogJson("1.0.0"))
+            val repository = CatalogRepository(root, catalog, settings)
+            repository.updateOverride("dev.towertools.sample", "文本工具", 7)
+            repository.updateOverride("dev.towertools.other", "网络工具", 10)
+            assertEquals("文本工具", repository.load().single().category)
+            assertEquals(7, repository.load().single().order)
+            repository.updateOverride("dev.towertools.sample", "新分类", -2)
+            val persisted = kotlinx.serialization.json.Json.decodeFromString<UserSettings>(Files.readString(settings))
+            assertEquals(ToolOverride("网络工具", 10), persisted.tools["dev.towertools.other"])
+            assertEquals(ToolOverride("新分类", -2), persisted.tools["dev.towertools.sample"])
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     @Test
     fun userCategoryAndOrderSurviveCatalogRegeneration() {

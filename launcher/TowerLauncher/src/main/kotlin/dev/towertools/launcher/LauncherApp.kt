@@ -53,6 +53,7 @@ fun LauncherApp(repository: CatalogRepository) {
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var editingTool by remember { mutableStateOf<LauncherTool?>(null) }
+    var saveError by remember { mutableStateOf<String?>(null) }
     val categories = orderedCategories(tools)
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
@@ -89,7 +90,7 @@ fun LauncherApp(repository: CatalogRepository) {
                     categories = categories,
                     selectedCategory = selectedCategory,
                     onMessage = { message = it },
-                    onEdit = { editingTool = it },
+                    onEdit = { saveError = null; editingTool = it },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -108,6 +109,7 @@ fun LauncherApp(repository: CatalogRepository) {
             tool = tool,
             allTools = tools,
             categories = categories,
+            saveError = saveError,
             onDismiss = { editingTool = null },
             onSave = { category, order ->
                 runCatching {
@@ -117,7 +119,7 @@ fun LauncherApp(repository: CatalogRepository) {
                     editingTool = null
                     message = "已更新 ${tool.displayName} 的分类和排序"
                 }.onFailure {
-                    message = it.message ?: "保存分类和排序失败"
+                    saveError = it.message ?: "保存分类和排序失败"
                 }
             },
         )
@@ -303,6 +305,7 @@ private fun EditToolDialog(
     tool: LauncherTool,
     allTools: List<LauncherTool>,
     categories: List<String>,
+    saveError: String?,
     onDismiss: () -> Unit,
     onSave: (category: String, order: Int) -> Unit,
 ) {
@@ -321,6 +324,7 @@ private fun EditToolDialog(
         text = {
             Column(modifier = Modifier.width(500.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("排序数字越小越靠前；相同数字按工具名称排列。", color = Color.Gray)
+                saveError?.let { Text(it, color = MaterialTheme.colors.error) }
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
