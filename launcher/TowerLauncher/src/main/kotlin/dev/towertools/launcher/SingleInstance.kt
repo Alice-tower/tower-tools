@@ -26,6 +26,7 @@ class SingleInstance private constructor(
             while (!server.isClosed) {
                 runCatching {
                     server.accept().use { socket ->
+                        socket.soTimeout = 1_000
                         val request = socket.getInputStream().bufferedReader(StandardCharsets.UTF_8).readLine()
                         if (request == appId) {
                             activationHandler.get().invoke()
@@ -78,23 +79,24 @@ class SingleInstance private constructor(
             return SingleInstance(appId, channel, lock, server)
         }
 
-        private fun notifyExisting(appId: String) {
+        internal fun notifyExisting(appId: String, port: Int = portFor(appId)): Boolean {
             repeat(8) {
                 val acknowledged = runCatching {
                     Socket().use { socket ->
-                        socket.connect(InetSocketAddress(InetAddress.getLoopbackAddress(), portFor(appId)), 250)
-                        socket.getOutputStream().bufferedWriter(StandardCharsets.UTF_8).use { writer ->
-                            writer.write(appId)
-                            writer.newLine()
-                            writer.flush()
-                        }
+                        socket.connect(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 250)
+                        socket.soTimeout = 1_000
+                        val writer = socket.getOutputStream().bufferedWriter(StandardCharsets.UTF_8)
+                        writer.write(appId)
+                        writer.newLine()
+                        writer.flush()
                         socket.getInputStream().bufferedReader(StandardCharsets.UTF_8).readLine() == "OK"
                     }
                 }.getOrDefault(false)
 
-                if (acknowledged) return
+                if (acknowledged) return true
                 Thread.sleep(100)
             }
+            return false
         }
 
         private fun portFor(appId: String): Int {
