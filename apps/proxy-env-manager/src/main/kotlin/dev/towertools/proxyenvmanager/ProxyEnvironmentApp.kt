@@ -101,7 +101,7 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
 
         Spacer(Modifier.weight(1f))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(enabled = presets != null, onClick = {
+            Button(enabled = presets?.isConfigured() == true, onClick = {
                 execute("已应用预设。请重启需要使用新配置的程序。", service::setLocalProxy)
             }) {
                 Text("应用预设")
@@ -193,8 +193,9 @@ private fun ProxyVariableRow(name: String, value: String?, preset: String?) {
             Text(name, style = MaterialTheme.typography.subtitle2)
             if (preset != null) {
                 Text(
-                    if (value == preset) "一致" else "不同",
-                    color = if (value == preset) MaterialTheme.colors.primary else MaterialTheme.colors.error,
+                    if (preset.isEmpty() && name != ProxyVariables.NO_PROXY) "未配置" else if (value == preset) "一致" else "不同",
+                    color = if (preset.isEmpty() && name != ProxyVariables.NO_PROXY) MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        else if (value == preset) MaterialTheme.colors.primary else MaterialTheme.colors.error,
                     style = MaterialTheme.typography.caption,
                 )
             }
@@ -215,7 +216,7 @@ private fun ProxyVariableRow(name: String, value: String?, preset: String?) {
         ) {
             SelectionContainer {
                 Text(
-                    preset?.takeUnless(String::isEmpty) ?: if (preset == null) "读取失败" else "（空字符串）",
+                    preset?.takeUnless(String::isEmpty) ?: if (preset == null) "读取失败" else if (name == ProxyVariables.NO_PROXY) "（空字符串）" else "未配置",
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),

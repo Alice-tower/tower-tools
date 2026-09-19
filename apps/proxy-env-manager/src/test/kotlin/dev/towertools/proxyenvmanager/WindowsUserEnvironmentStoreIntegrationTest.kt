@@ -10,16 +10,21 @@ class WindowsUserEnvironmentStoreIntegrationTest {
         if (System.getenv("TOWER_RUN_PROXY_ENV_INTEGRATION") != "1") return
 
         val store = WindowsUserEnvironmentStore
-        val service = ProxyEnvironmentService(store)
+        val configured = ProxyPresets("http://127.0.0.1:8080", "http://127.0.0.1:8080", "socks5://127.0.0.1:1080", "localhost")
+        val presetStore = object : ProxyPresetStore {
+            override fun read() = configured
+            override fun write(presets: ProxyPresets) = error("不应保存测试预设")
+        }
+        val service = ProxyEnvironmentService(store, presetStore)
         val original = service.read()
 
         try {
             assertEquals(
                 ProxyEnvironment(
-                    ProxyVariables.LOCAL_HTTP_PROXY,
-                    ProxyVariables.LOCAL_HTTP_PROXY,
-                    ProxyVariables.LOCAL_ALL_PROXY,
-                    ProxyVariables.LOCAL_NO_PROXY,
+                    configured.httpProxy,
+                    configured.httpsProxy,
+                    configured.allProxy,
+                    configured.noProxy,
                 ),
                 service.setLocalProxy(),
             )

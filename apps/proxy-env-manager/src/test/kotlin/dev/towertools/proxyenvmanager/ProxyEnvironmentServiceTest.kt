@@ -8,14 +8,24 @@ import java.nio.file.Files
 
 class ProxyEnvironmentServiceTest {
     @Test
-    fun setsAllVariablesToPresets() {
+    fun setsAllVariablesToConfiguredPresets() {
         val store = FakeStore()
-        val result = ProxyEnvironmentService(store, FakePresetStore()).setLocalProxy()
+        val configured = ProxyPresets("http://localhost:8080", "http://localhost:8080", "socks5://localhost:1080", "localhost")
+        val result = ProxyEnvironmentService(store, FakePresetStore(configured)).setLocalProxy()
 
-        assertEquals(ProxyVariables.LOCAL_HTTP_PROXY, result.httpProxy)
-        assertEquals(ProxyVariables.LOCAL_HTTP_PROXY, result.httpsProxy)
-        assertEquals(ProxyVariables.LOCAL_ALL_PROXY, result.allProxy)
-        assertEquals(ProxyVariables.LOCAL_NO_PROXY, result.noProxy)
+        assertEquals(configured.httpProxy, result.httpProxy)
+        assertEquals(configured.httpsProxy, result.httpsProxy)
+        assertEquals(configured.allProxy, result.allProxy)
+        assertEquals(configured.noProxy, result.noProxy)
+    }
+
+    @Test
+    fun unconfiguredPresetsCannotChangeEnvironment() {
+        val store = FakeStore(ProxyVariables.HTTP_PROXY to "http://existing")
+        assertFailsWith<IllegalArgumentException> {
+            ProxyEnvironmentService(store, FakePresetStore()).setLocalProxy()
+        }
+        assertEquals(mapOf(ProxyVariables.HTTP_PROXY to "http://existing"), store.values)
     }
 
     @Test
@@ -43,7 +53,8 @@ class ProxyEnvironmentServiceTest {
             ProxyVariables.NO_PROXY to "old-no-proxy",
         ).apply { failingName = ProxyVariables.NO_PROXY }
 
-        assertFailsWith<IllegalStateException> { ProxyEnvironmentService(store, FakePresetStore()).setLocalProxy() }
+        val configured = ProxyPresets("http://localhost:8080", "http://localhost:8080", "socks5://localhost:1080", "localhost")
+        assertFailsWith<IllegalStateException> { ProxyEnvironmentService(store, FakePresetStore(configured)).setLocalProxy() }
         assertEquals("http://old-http", store.values[ProxyVariables.HTTP_PROXY])
         assertEquals("http://old-https", store.values[ProxyVariables.HTTPS_PROXY])
         assertEquals("socks5://old-all", store.values[ProxyVariables.ALL_PROXY])

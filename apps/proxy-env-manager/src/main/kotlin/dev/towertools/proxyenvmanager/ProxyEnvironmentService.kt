@@ -22,7 +22,9 @@ class ProxyEnvironmentService(
     )
 
     fun setLocalProxy(): ProxyEnvironment {
-        val values = presets().asMap()
+        val configured = presets()
+        require(configured.isConfigured()) { "请先设置 HTTP_PROXY、HTTPS_PROXY 和 ALL_PROXY 预设" }
+        val values = configured.asMap()
         return changeAll { name -> store.write(name, values.getValue(name)) }
     }
 
