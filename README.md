@@ -2,7 +2,7 @@
 
 Tower Tools 是 Alice-tower 面向 Windows 的小型 GUI 工具集合。每个应用均使用 Kotlin/JVM 和 Compose Desktop 编写，并打包为可独立运行的便携目录。
 
-本仓库的原创代码采用 [MIT 许可证](LICENSE)。便携包中包含的第三方组件仍遵循各自的许可证；分发便携包时应一并提供适用的许可声明。
+本仓库的原创代码采用 [MIT 许可证](LICENSE)。便携包中第三方组件的许可与来源见 [第三方声明](THIRD_PARTY_NOTICES.md)；仓库构建脚本会将声明和许可文本复制到便携目录。
 
 ## 使用便携应用
 

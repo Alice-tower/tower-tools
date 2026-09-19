@@ -30,6 +30,8 @@ try {
     [IO.Directory]::CreateDirectory($stage) | Out-Null
     Copy-Item -LiteralPath $executable.Directory.FullName -Destination $prepared -Recurse
     Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $prepared 'LICENSE')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $prepared 'THIRD_PARTY_NOTICES.md')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'third-party') -Destination (Join-Path $prepared 'third-party') -Recurse
     Publish-Directory -PreparedDirectory $prepared -Destination (Join-Path $outputRoot "tools\$($metadata.id)") -AllowedOutputRoot $outputRoot
     Write-Host "Built $($metadata.displayName): outputs\tools\$($metadata.id)"
 }
