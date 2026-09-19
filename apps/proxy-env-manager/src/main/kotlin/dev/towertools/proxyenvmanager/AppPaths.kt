@@ -18,4 +18,6 @@ object AppPaths {
     val logDirectory: Path by lazy {
         dataDirectory.resolve("logs").also(Files::createDirectories)
     }
+
+    val proxyPresetsFile: Path by lazy { dataDirectory.resolve("proxy-presets.properties") }
 }

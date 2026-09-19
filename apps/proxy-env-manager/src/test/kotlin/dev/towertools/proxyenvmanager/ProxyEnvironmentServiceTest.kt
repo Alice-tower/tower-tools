@@ -4,12 +4,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import java.nio.file.Files
 
 class ProxyEnvironmentServiceTest {
     @Test
     fun setsAllVariablesToPresets() {
         val store = FakeStore()
-        val result = ProxyEnvironmentService(store).setLocalProxy()
+        val result = ProxyEnvironmentService(store, FakePresetStore()).setLocalProxy()
 
         assertEquals(ProxyVariables.LOCAL_HTTP_PROXY, result.httpProxy)
         assertEquals(ProxyVariables.LOCAL_HTTP_PROXY, result.httpsProxy)
@@ -25,7 +26,7 @@ class ProxyEnvironmentServiceTest {
             ProxyVariables.ALL_PROXY to "socks5://old-all",
             ProxyVariables.NO_PROXY to "old-no-proxy",
         )
-        val result = ProxyEnvironmentService(store).clear()
+        val result = ProxyEnvironmentService(store, FakePresetStore()).clear()
 
         assertNull(result.httpProxy)
         assertNull(result.httpsProxy)
@@ -42,11 +43,58 @@ class ProxyEnvironmentServiceTest {
             ProxyVariables.NO_PROXY to "old-no-proxy",
         ).apply { failingName = ProxyVariables.NO_PROXY }
 
-        assertFailsWith<IllegalStateException> { ProxyEnvironmentService(store).setLocalProxy() }
+        assertFailsWith<IllegalStateException> { ProxyEnvironmentService(store, FakePresetStore()).setLocalProxy() }
         assertEquals("http://old-http", store.values[ProxyVariables.HTTP_PROXY])
         assertEquals("http://old-https", store.values[ProxyVariables.HTTPS_PROXY])
         assertEquals("socks5://old-all", store.values[ProxyVariables.ALL_PROXY])
         assertEquals("old-no-proxy", store.values[ProxyVariables.NO_PROXY])
+    }
+
+    @Test
+    fun savedPresetsAreUsedWhenApplyingEnvironment() {
+        val store = FakeStore()
+        val presetStore = FakePresetStore()
+        val service = ProxyEnvironmentService(store, presetStore)
+        val edited = ProxyPresets("http://localhost:8080", "http://localhost:8081", "socks5://localhost:1080", "")
+
+        service.savePresets(edited)
+        assertEquals(edited, service.presets())
+        val result = service.setLocalProxy()
+        assertEquals(edited.httpProxy, result.httpProxy)
+        assertEquals(edited.httpsProxy, result.httpsProxy)
+        assertEquals(edited.allProxy, result.allProxy)
+        assertEquals(edited.noProxy, result.noProxy)
+    }
+
+    @Test
+    fun blankProxyPresetIsRejectedWithoutSaving() {
+        val presetStore = FakePresetStore()
+        val service = ProxyEnvironmentService(FakeStore(), presetStore)
+
+        assertFailsWith<IllegalArgumentException> {
+            service.savePresets(ProxyPresets(httpProxy = " "))
+        }
+        assertEquals(ProxyPresets(), presetStore.read())
+    }
+
+    @Test
+    fun filePresetsSurviveStoreRecreation() {
+        val directory = Files.createTempDirectory("proxy-presets-test-")
+        try {
+            val path = directory.resolve("presets.properties")
+            val edited = ProxyPresets("http://localhost:8080", "http://localhost:8081", "socks5://localhost:1080", "localhost,测试")
+            assertEquals(ProxyPresets(), FileProxyPresetStore(path).read())
+            FileProxyPresetStore(path).write(edited)
+            assertEquals(edited, FileProxyPresetStore(path).read())
+        } finally {
+            Files.deleteIfExists(directory.resolve("presets.properties"))
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    private class FakePresetStore(var value: ProxyPresets = ProxyPresets()) : ProxyPresetStore {
+        override fun read(): ProxyPresets = value
+        override fun write(presets: ProxyPresets) { value = presets }
     }
 
     private class FakeStore(vararg initial: Pair<String, String>) : UserEnvironmentStore {

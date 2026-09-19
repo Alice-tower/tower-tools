@@ -17,10 +17,19 @@ object ProxyVariables {
     const val LOCAL_ALL_PROXY = "socks5://127.0.0.1:15235"
     const val LOCAL_NO_PROXY = "localhost,127.0.0.1,::1,192.168.31.1,192.168.31.100"
 
-    val presets = linkedMapOf(
-        HTTP_PROXY to LOCAL_HTTP_PROXY,
-        HTTPS_PROXY to LOCAL_HTTP_PROXY,
-        ALL_PROXY to LOCAL_ALL_PROXY,
-        NO_PROXY to LOCAL_NO_PROXY,
+    val names = listOf(HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, NO_PROXY)
+}
+
+data class ProxyPresets(
+    val httpProxy: String = ProxyVariables.LOCAL_HTTP_PROXY,
+    val httpsProxy: String = ProxyVariables.LOCAL_HTTP_PROXY,
+    val allProxy: String = ProxyVariables.LOCAL_ALL_PROXY,
+    val noProxy: String = ProxyVariables.LOCAL_NO_PROXY,
+) {
+    fun asMap(): Map<String, String> = linkedMapOf(
+        ProxyVariables.HTTP_PROXY to httpProxy,
+        ProxyVariables.HTTPS_PROXY to httpsProxy,
+        ProxyVariables.ALL_PROXY to allProxy,
+        ProxyVariables.NO_PROXY to noProxy,
     )
 }
