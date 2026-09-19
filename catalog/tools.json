@@ -2,6 +2,16 @@
     "schemaVersion":  1,
     "tools":  [
                   {
+                      "id":  "dev.towertools.researchlibrarylauncher",
+                      "projectName":  "ResearchLibraryLauncher",
+                      "displayName":  "本地项目启动器",
+                      "description":  "登记并启动本地 CMD 项目，可查看 Web 端口状态",
+                      "version":  "1.1.0",
+                      "executablePath":  "tools/dev.towertools.researchlibrarylauncher/ResearchLibraryLauncher.exe",
+                      "defaultCategory":  "未分类",
+                      "defaultOrder":  0
+                  },
+                  {
                       "id":  "dev.towertools.proxyenvmanager",
                       "projectName":  "ProxyEnvManager",
                       "displayName":  "代理环境变量",
@@ -18,16 +28,6 @@
                       "description":  "对单张图片进行旋转、比例裁剪和网格分割，预览后按原格式输出。",
                       "version":  "1.1.1",
                       "executablePath":  "tools/dev.towertools.imageprocessor/ImageProcessor.exe",
-                      "defaultCategory":  "未分类",
-                      "defaultOrder":  0
-                  },
-                  {
-                      "id":  "dev.towertools.researchlibrarylauncher",
-                      "projectName":  "ResearchLibraryLauncher",
-                      "displayName":  "研究资料库",
-                      "description":  "启动并访问本地研究资料库",
-                      "version":  "1.0.0",
-                      "executablePath":  "tools/dev.towertools.researchlibrarylauncher/ResearchLibraryLauncher.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0
                   },

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.researchlibrarylauncher"
-version = "1.0.0"
+version = "1.1.0"
 
 kotlin {
     jvmToolchain(21)
@@ -27,7 +27,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "ResearchLibraryLauncher"
-            packageVersion = "1.0.0"
+            packageVersion = "1.1.0"
             vendor = "Alice-tower"
         }
     }
