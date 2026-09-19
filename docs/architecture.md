@@ -24,12 +24,13 @@ Tower Tools 是由相互独立的 Windows x64 桌面应用组成的 monorepo。�
 
 ```text
 outputs/
-  launcher/               TowerLauncher.exe 和 runtime 文件
-  tools/<application-id>/ Tool.exe 和 runtime 文件
+  launcher/               TowerLauncher.exe、LICENSE 和 runtime 文件
+  tools/<application-id>/ Tool.exe、LICENSE 和 runtime 文件
   catalog/tools.json      生成的运行时目录
 ```
 
 目录中的可执行文件路径相对于 `outputs/`，因此无需修改路径即可整体移动该目录。
+仓库生命周期脚本会将根目录的 MIT `LICENSE` 复制到每个便携应用目录。第三方组件的许可声明需在正式分发时另行核对。
 
 ## 单实例行为
 

@@ -94,7 +94,7 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
                 }
                 ProxyVariables.names.forEach { name ->
                     Divider(modifier = Modifier.padding(vertical = 6.dp))
-                    ProxyVariableRow(name, values[name], presetValues[name])
+                    ProxyVariableRow(name, values[name], presetValues[name], presets?.isConfigured() == true)
                 }
             }
         }
@@ -187,15 +187,23 @@ private fun PresetSettingsDialog(
 }
 
 @Composable
-private fun ProxyVariableRow(name: String, value: String?, preset: String?) {
+private fun ProxyVariableRow(name: String, value: String?, preset: String?, presetsConfigured: Boolean) {
+    val comparison = preset?.let { comparePreset(name, value, it, presetsConfigured) }
     Row(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.width(130.dp)) {
             Text(name, style = MaterialTheme.typography.subtitle2)
-            if (preset != null) {
+            if (comparison != null) {
                 Text(
-                    if (preset.isEmpty() && name != ProxyVariables.NO_PROXY) "未配置" else if (value == preset) "一致" else "不同",
-                    color = if (preset.isEmpty() && name != ProxyVariables.NO_PROXY) MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                        else if (value == preset) MaterialTheme.colors.primary else MaterialTheme.colors.error,
+                    when (comparison) {
+                        PresetComparison.UNCONFIGURED -> "未配置"
+                        PresetComparison.MATCH -> "一致"
+                        PresetComparison.DIFFERENT -> "不同"
+                    },
+                    color = when (comparison) {
+                        PresetComparison.UNCONFIGURED -> MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        PresetComparison.MATCH -> MaterialTheme.colors.primary
+                        PresetComparison.DIFFERENT -> MaterialTheme.colors.error
+                    },
                     style = MaterialTheme.typography.caption,
                 )
             }
@@ -216,7 +224,8 @@ private fun ProxyVariableRow(name: String, value: String?, preset: String?) {
         ) {
             SelectionContainer {
                 Text(
-                    preset?.takeUnless(String::isEmpty) ?: if (preset == null) "读取失败" else if (name == ProxyVariables.NO_PROXY) "（空字符串）" else "未配置",
+                    preset?.takeUnless(String::isEmpty) ?: if (preset == null) "读取失败"
+                        else if (comparison == PresetComparison.UNCONFIGURED) "未配置" else "（空字符串）",
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),

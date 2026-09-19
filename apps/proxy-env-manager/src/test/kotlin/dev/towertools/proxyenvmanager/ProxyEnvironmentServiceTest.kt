@@ -8,6 +8,14 @@ import java.nio.file.Files
 
 class ProxyEnvironmentServiceTest {
     @Test
+    fun noProxyDisplayTreatsAbsentAndEmptyAsEquivalentAfterConfiguration() {
+        assertEquals(PresetComparison.UNCONFIGURED, comparePreset(ProxyVariables.NO_PROXY, null, "", false))
+        assertEquals(PresetComparison.MATCH, comparePreset(ProxyVariables.NO_PROXY, null, "", true))
+        assertEquals(PresetComparison.MATCH, comparePreset(ProxyVariables.NO_PROXY, "", "", true))
+        assertEquals(PresetComparison.DIFFERENT, comparePreset(ProxyVariables.NO_PROXY, "localhost", "", true))
+    }
+
+    @Test
     fun setsAllVariablesToConfiguredPresets() {
         val store = FakeStore()
         val configured = ProxyPresets("http://localhost:8080", "http://localhost:8080", "socks5://localhost:1080", "localhost")

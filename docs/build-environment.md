@@ -23,5 +23,6 @@ Gradle Wrapper 下载的网络超时为 120 秒。填充冷缓存仍需要 Inter
 ## 便携打包
 
 Compose Desktop 的 `createDistributable` task 会创建 Windows application image，其中包含 `.exe`、应用 library 和精简 Java runtime。它是一个目录而非单文件可执行程序，必须整体复制。
+仓库的构建脚本会在发布到 `outputs/` 时，将根目录 `LICENSE` 一并复制到工具和启动器目录。直接运行项目内的 `createDistributable` 只生成 Compose application image。
 
 未配置 MSI、shortcut、signing 或自动更新机制。

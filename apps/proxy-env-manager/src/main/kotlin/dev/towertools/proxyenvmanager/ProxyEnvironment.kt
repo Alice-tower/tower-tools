@@ -16,6 +16,15 @@ object ProxyVariables {
     val names = listOf(HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, NO_PROXY)
 }
 
+enum class PresetComparison { UNCONFIGURED, MATCH, DIFFERENT }
+
+fun comparePreset(name: String, current: String?, preset: String, presetsConfigured: Boolean): PresetComparison = when {
+    preset.isEmpty() && (name != ProxyVariables.NO_PROXY || !presetsConfigured) -> PresetComparison.UNCONFIGURED
+    name == ProxyVariables.NO_PROXY && current.isNullOrEmpty() && preset.isEmpty() -> PresetComparison.MATCH
+    current == preset -> PresetComparison.MATCH
+    else -> PresetComparison.DIFFERENT
+}
+
 data class ProxyPresets(
     val httpProxy: String = "",
     val httpsProxy: String = "",

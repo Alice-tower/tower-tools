@@ -20,7 +20,7 @@
 
 Kotlin package 与 Gradle group 均等于 Application ID。ID 发布后不得复用给其他工具，也不得修改。
 
-作者/vendor 为 `Alice-tower`。默认不添加开源许可证。
+作者/vendor 为 `Alice-tower`。仓库原创代码采用根目录 `LICENSE` 中的 MIT 许可证；第三方组件保留各自的许可证。
 
 ## 版本
 
