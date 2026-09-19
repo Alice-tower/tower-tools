@@ -30,6 +30,7 @@ data class UserSettings(
 data class ToolOverride(
     val category: String? = null,
     val order: Int? = null,
+    val favorite: Boolean = false,
 )
 
 data class LauncherTool(
@@ -41,4 +42,5 @@ data class LauncherTool(
     val executable: Path,
     val category: String,
     val order: Int,
+    val favorite: Boolean = false,
 )

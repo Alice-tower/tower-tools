@@ -35,17 +35,20 @@ class CatalogRepository(
                 executable = outputsRoot.resolve(tool.executablePath.replace('/', '\\')).normalize(),
                 category = override?.category ?: tool.defaultCategory,
                 order = override?.order ?: tool.defaultOrder,
+                favorite = override?.favorite ?: false,
             )
         }.sortedWith(compareBy<LauncherTool> { it.order }.thenBy { it.displayName })
     }
 
-    fun updateOverride(toolId: String, category: String, order: Int) {
+    fun updateOverride(toolId: String, category: String, order: Int, favorite: Boolean? = null) {
         val current = try {
             readUserSettings()
         } catch (failure: Exception) {
             throw IllegalStateException("无法读取现有分类和排序，已取消保存以保护原文件：$userSettingsFile", failure)
         }
-        val updated = current.copy(tools = current.tools + (toolId to ToolOverride(category, order)))
+        val updated = current.copy(
+            tools = current.tools + (toolId to ToolOverride(category, order, favorite ?: current.tools[toolId]?.favorite ?: false)),
+        )
         writeSettingsAtomically(
             userSettingsFile,
             json.encodeToString(updated) + System.lineSeparator(),

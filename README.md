@@ -37,4 +37,4 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Remove-Tool.ps
 
 构建会复用仓库本地 `.gradle-user-home/` 缓存，且默认采用增量构建。仅在确实需要干净重建时，才为构建命令传入 `-Clean`。
 
-新增或删除工具前，请阅读 `docs/tool-lifecycle.md`。启动器的分类与排序为用户专属设置，存储于 `%LOCALAPPDATA%`；重新构建便携应用不会覆盖这些设置。详见 `docs/launcher-catalog.md`。
+新增或删除工具前，请阅读 `docs/tool-lifecycle.md`。启动器的分类、排序与收藏为用户专属设置，存储于 `%LOCALAPPDATA%`；重新构建便携应用不会覆盖这些设置。详见 `docs/launcher-catalog.md`。

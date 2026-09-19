@@ -26,6 +26,7 @@ import androidx.compose.material.Divider
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -47,10 +48,25 @@ import androidx.compose.ui.unit.dp
 
 private const val UNCATEGORIZED = "未分类"
 
+internal sealed interface ToolFilter {
+    data object Favorites : ToolFilter
+    data object All : ToolFilter
+    data class Category(val name: String) : ToolFilter
+}
+
+internal fun defaultFilter(tools: List<LauncherTool>): ToolFilter =
+    if (tools.any { it.favorite }) ToolFilter.Favorites else ToolFilter.All
+
+internal fun validFilter(filter: ToolFilter, tools: List<LauncherTool>): ToolFilter = when (filter) {
+    ToolFilter.Favorites -> if (tools.any { it.favorite }) filter else ToolFilter.All
+    ToolFilter.All -> filter
+    is ToolFilter.Category -> if (tools.any { it.category == filter.name }) filter else ToolFilter.All
+}
+
 @Composable
 fun LauncherApp(repository: CatalogRepository) {
     var tools by remember { mutableStateOf(repository.load()) }
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedFilter by remember { mutableStateOf(defaultFilter(tools)) }
     var message by remember { mutableStateOf<String?>(null) }
     var editingTool by remember { mutableStateOf<LauncherTool?>(null) }
     var saveError by remember { mutableStateOf<String?>(null) }
@@ -64,9 +80,7 @@ fun LauncherApp(repository: CatalogRepository) {
             }
             TextButton(onClick = {
                 tools = repository.load()
-                if (selectedCategory != null && tools.none { it.category == selectedCategory }) {
-                    selectedCategory = null
-                }
+                selectedFilter = validFilter(selectedFilter, tools)
                 message = "工具清单已刷新"
             }) {
                 Text("刷新")
@@ -81,14 +95,14 @@ fun LauncherApp(repository: CatalogRepository) {
                 CategorySidebar(
                     tools = tools,
                     categories = categories,
-                    selectedCategory = selectedCategory,
-                    onSelect = { selectedCategory = it },
+                    selectedFilter = selectedFilter,
+                    onSelect = { selectedFilter = it },
                 )
                 Spacer(Modifier.width(18.dp))
                 ToolList(
                     tools = tools,
                     categories = categories,
-                    selectedCategory = selectedCategory,
+                    selectedFilter = selectedFilter,
                     onMessage = { message = it },
                     onEdit = { saveError = null; editingTool = it },
                     modifier = Modifier.weight(1f),
@@ -111,15 +125,18 @@ fun LauncherApp(repository: CatalogRepository) {
             categories = categories,
             saveError = saveError,
             onDismiss = { editingTool = null },
-            onSave = { category, order ->
+            onSave = { category, order, favorite ->
                 runCatching {
-                    repository.updateOverride(tool.id, category, order)
+                    repository.updateOverride(tool.id, category, order, favorite)
                     tools = repository.load()
-                    if (selectedCategory != null) selectedCategory = category
+                    selectedFilter = when (selectedFilter) {
+                        is ToolFilter.Category -> ToolFilter.Category(category)
+                        else -> validFilter(selectedFilter, tools)
+                    }
                     editingTool = null
-                    message = "已更新 ${tool.displayName} 的分类和排序"
+                    message = "已更新 ${tool.displayName} 的设置"
                 }.onFailure {
-                    saveError = it.message ?: "保存分类和排序失败"
+                    saveError = it.message ?: "保存工具设置失败"
                 }
             },
         )
@@ -140,8 +157,8 @@ private fun EmptyToolList() {
 private fun CategorySidebar(
     tools: List<LauncherTool>,
     categories: List<String>,
-    selectedCategory: String?,
-    onSelect: (String?) -> Unit,
+    selectedFilter: ToolFilter,
+    onSelect: (ToolFilter) -> Unit,
 ) {
     Card(modifier = Modifier.width(184.dp).fillMaxHeight(), elevation = 1.dp) {
         LazyColumn(
@@ -150,18 +167,26 @@ private fun CategorySidebar(
         ) {
             item {
                 CategoryItem(
+                    name = "收藏",
+                    count = tools.count { it.favorite },
+                    selected = selectedFilter == ToolFilter.Favorites,
+                    onClick = { onSelect(ToolFilter.Favorites) },
+                )
+            }
+            item {
+                CategoryItem(
                     name = "全部",
                     count = tools.size,
-                    selected = selectedCategory == null,
-                    onClick = { onSelect(null) },
+                    selected = selectedFilter == ToolFilter.All,
+                    onClick = { onSelect(ToolFilter.All) },
                 )
             }
             items(categories, key = { it }) { category ->
                 CategoryItem(
                     name = category,
                     count = tools.count { it.category == category },
-                    selected = selectedCategory == category,
-                    onClick = { onSelect(category) },
+                    selected = selectedFilter == ToolFilter.Category(category),
+                    onClick = { onSelect(ToolFilter.Category(category)) },
                 )
             }
         }
@@ -186,16 +211,25 @@ private fun CategoryItem(name: String, count: Int, selected: Boolean, onClick: (
 private fun ToolList(
     tools: List<LauncherTool>,
     categories: List<String>,
-    selectedCategory: String?,
+    selectedFilter: ToolFilter,
     onMessage: (String) -> Unit,
     onEdit: (LauncherTool) -> Unit,
     modifier: Modifier,
 ) {
-    val visibleTools = selectedCategory?.let { category -> tools.filter { it.category == category } } ?: tools
+    val visibleTools = when (selectedFilter) {
+        ToolFilter.Favorites -> tools.filter { it.favorite }
+        ToolFilter.All -> tools
+        is ToolFilter.Category -> tools.filter { it.category == selectedFilter.name }
+    }
 
     Column(modifier = modifier.fillMaxHeight()) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(selectedCategory ?: "全部工具", style = MaterialTheme.typography.h5, modifier = Modifier.weight(1f))
+            val heading = when (selectedFilter) {
+                ToolFilter.Favorites -> "收藏"
+                ToolFilter.All -> "全部工具"
+                is ToolFilter.Category -> selectedFilter.name
+            }
+            Text(heading, style = MaterialTheme.typography.h5, modifier = Modifier.weight(1f))
             Text("${visibleTools.size} 个 · 数字越小越靠前", color = Color.Gray)
         }
         Spacer(Modifier.height(8.dp))
@@ -203,7 +237,9 @@ private fun ToolList(
         Spacer(Modifier.height(8.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (selectedCategory == null) {
+            if (visibleTools.isEmpty()) {
+                item { Text("还没有收藏工具。右键工具并选择“编辑分类和排序”，即可添加收藏。", color = Color.Gray) }
+            } else if (selectedFilter == ToolFilter.All) {
                 categories.forEach { category ->
                     val categoryTools = tools.filter { it.category == category }
                     item(key = "category-$category") {
@@ -307,11 +343,13 @@ private fun EditToolDialog(
     categories: List<String>,
     saveError: String?,
     onDismiss: () -> Unit,
-    onSave: (category: String, order: Int) -> Unit,
+    onSave: (category: String, order: Int, favorite: Boolean) -> Unit,
 ) {
     var category by remember(tool.id) { mutableStateOf(tool.category) }
     var orderText by remember(tool.id) { mutableStateOf(tool.order.toString()) }
+    var favorite by remember(tool.id) { mutableStateOf(tool.favorite) }
     var categoryMenuExpanded by remember(tool.id) { mutableStateOf(false) }
+    val favoriteChanged = favorite != tool.favorite
     val normalizedCategory = category.trim().ifEmpty { UNCATEGORIZED }
     val parsedOrder = orderText.toIntOrNull()
     val references = allTools
@@ -320,9 +358,27 @@ private fun EditToolDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("编辑 ${tool.displayName}") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("编辑 ${tool.displayName}", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                OutlinedButton(onClick = { favorite = !favorite }) {
+                    Text(when {
+                        favoriteChanged && favorite -> "★ 收藏 · 待保存"
+                        favoriteChanged -> "☆ 取消收藏 · 待保存"
+                        favorite -> "★ 已收藏"
+                        else -> "☆ 收藏"
+                    })
+                }
+            }
+        },
         text = {
             Column(modifier = Modifier.width(500.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    if (favoriteChanged) "收藏状态尚未保存，点击右下角“保存更改”后生效。"
+                    else "收藏状态与分类、排序一起保存；取消编辑不会更改设置。",
+                    color = if (favoriteChanged) MaterialTheme.colors.primary else Color.Gray,
+                    style = MaterialTheme.typography.caption,
+                )
                 Text("排序数字越小越靠前；相同数字按工具名称排列。", color = Color.Gray)
                 saveError?.let { Text(it, color = MaterialTheme.colors.error) }
                 OutlinedTextField(
@@ -383,9 +439,9 @@ private fun EditToolDialog(
         confirmButton = {
             Button(
                 enabled = parsedOrder != null,
-                onClick = { onSave(normalizedCategory, checkNotNull(parsedOrder)) },
+                onClick = { onSave(normalizedCategory, checkNotNull(parsedOrder), favorite) },
             ) {
-                Text("保存")
+                Text("保存更改")
             }
         },
         dismissButton = {

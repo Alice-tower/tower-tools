@@ -88,6 +88,7 @@ class CatalogRepositoryTest {
             val repository = CatalogRepository(root, catalog, settings)
             assertEquals("文本工具", repository.load().single().category)
             assertEquals(7, repository.load().single().order)
+            assertEquals(false, repository.load().single().favorite)
 
             Files.writeString(catalog, catalogJson(version = "1.1.0"))
             val updated = repository.load().single()
@@ -114,6 +115,34 @@ class CatalogRepositoryTest {
             val updated = repository.load().single()
             assertEquals("网络工具", updated.category)
             assertEquals(-10, updated.order)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun favoritePersistsAndControlsInitialFilter() {
+        val root = createTempDirectory("tower-launcher-favorite-test")
+        try {
+            val catalog = root.resolve("catalog.json")
+            val settings = root.resolve("user-settings.json")
+            Files.writeString(catalog, catalogJson(version = "1.0.0"))
+            val repository = CatalogRepository(root, catalog, settings)
+
+            assertEquals(ToolFilter.All, defaultFilter(repository.load()))
+            repository.updateOverride("dev.towertools.sample", "未分类", 0, favorite = true)
+            assertEquals(true, repository.load().single().favorite)
+            assertEquals(ToolFilter.Favorites, defaultFilter(repository.load()))
+
+            Files.writeString(catalog, catalogJson(version = "1.1.0"))
+            assertEquals(true, CatalogRepository(root, catalog, settings).load().single().favorite)
+            repository.updateOverride("dev.towertools.sample", "网络工具", 1)
+            assertEquals(true, repository.load().single().favorite)
+
+            repository.updateOverride("dev.towertools.sample", "网络工具", 1, favorite = false)
+            assertEquals(false, repository.load().single().favorite)
+            assertEquals(ToolFilter.All, validFilter(ToolFilter.Favorites, repository.load()))
         } finally {
             root.deleteRecursively()
         }
