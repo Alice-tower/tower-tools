@@ -32,6 +32,16 @@
                       "defaultOrder":  0
                   },
                   {
+                      "id":  "dev.towertools.naibox",
+                      "projectName":  "NaiBox",
+                      "displayName":  "图片元数据解析器",
+                      "description":  "本地解析 NovelAI、角色卡及 PNG/JPEG/WebP 图片元数据",
+                      "version":  "1.0.0",
+                      "executablePath":  "tools/dev.towertools.naibox/NaiBox.exe",
+                      "defaultCategory":  "未分类",
+                      "defaultOrder":  0
+                  },
+                  {
                       "id":  "dev.towertools.mediatranscriber",
                       "projectName":  "MediaTranscriber",
                       "displayName":  "影音转写",

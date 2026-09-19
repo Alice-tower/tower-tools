@@ -14,6 +14,7 @@ Tower Tools 是 Alice-tower 面向 Windows 的小型 GUI 工具集合。每个�
 | --- | --- | --- |
 | 代理环境变量 | 查看、设置或删除当前用户的 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY` 与 `NO_PROXY`。 | `dev.towertools.proxyenvmanager` |
 | 图片裁剪与分割 | 对单张图片进行旋转、裁剪、预览和分割，不修改原图。 | `dev.towertools.imageprocessor` |
+| 图片元数据解析器 | 本地解析 NovelAI、A1111、角色卡和 PNG/JPEG/WebP 图片元数据，查看内嵌 PNG。 | `dev.towertools.naibox` |
 | 影音转写 | 从媒体中提取 MP3，并借助本地 Whisper CUDA 模型转写为 TXT。 | `dev.towertools.mediatranscriber` |
 | 本地项目启动器 | 登记并手动启动本地 CMD 项目，可查看 Web 端口状态。 | `dev.towertools.researchlibrarylauncher` |
 
