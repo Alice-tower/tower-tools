@@ -6,6 +6,7 @@
 - 工具必须通过 `scripts/Remove-Tool.ps1` 删除；新增、删除或重命名工具时，必须同步启动器目录并重新构建启动器的便携输出。
 - Application ID 必须稳定，并使用 `dev.towertools.*` 命名空间。已发布的 ID 不得变更。
 - 便携输出只能位于 `outputs/`，且不得提交到 Git。
+- 新增或升级第三方依赖时，发布前须核对实际打包组件及其许可，更新 `THIRD_PARTY_NOTICES.md` 和必要的 `third-party/licenses/` 文本；仓库根目录的 MIT `LICENSE` 仅适用于原创代码，不得用它替代第三方许可。
 - 运行时配置和日志必须位于 `%LOCALAPPDATA%\Alice-tower\...`；重新构建不得覆盖用户数据。
 - 必须通过 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` 调用生命周期脚本，避免仓库工作依赖机器的 PowerShell 执行策略。
 - 生命周期脚本拥有位于 `.gradle-user-home/` 的共享 Gradle user home；不得为仓库构建覆盖 `GRADLE_USER_HOME`。
