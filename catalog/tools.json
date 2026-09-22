@@ -12,6 +12,16 @@
                       "defaultOrder":  0
                   },
                   {
+                      "id":  "dev.towertools.resourcetagger",
+                      "projectName":  "ResourceTagger",
+                      "displayName":  "本地资源语义管理器",
+                      "description":  "以标签组织本地目录和文件，支持单层扫描、组合筛选与资源定位。",
+                      "version":  "1.0.0",
+                      "executablePath":  "tools/dev.towertools.resourcetagger/ResourceTagger.exe",
+                      "defaultCategory":  "未分类",
+                      "defaultOrder":  0
+                  },
+                  {
                       "id":  "dev.towertools.proxyenvmanager",
                       "projectName":  "ProxyEnvManager",
                       "displayName":  "代理环境变量",

@@ -20,6 +20,8 @@ the portable output.
 | webp-imageio, including its native WebP reader/writer | 0.11.0 | Apache-2.0 | `third-party/licenses/Apache-2.0.txt` and `third-party/licenses/webp-imageio-NOTICE.txt`, extracted from the distributed JAR; [source](https://github.com/usefulness/webp-imageio) |
 | libwebp used by the WebP native reader/writer | bundled with webp-imageio 0.11.0 | BSD-3-Clause | `third-party/licenses/libwebp-BSD-3-Clause.txt`; [source](https://github.com/webmproject/libwebp/blob/main/COPYING) |
 | Java Native Access (`jna`, `jna-platform`) | 5.19.1 | Apache-2.0 OR LGPL-2.1-or-later; this distribution uses the Apache-2.0 option | `third-party/licenses/JNA-LICENSE.txt` and `third-party/licenses/Apache-2.0.txt`; [source](https://github.com/java-native-access/jna) |
+| Xerial SQLite JDBC (`sqlite-jdbc`, including bundled `sqlitejdbc.dll`) | 3.50.3.0 | Apache-2.0; inherited Zentus code is BSD-2-Clause | `third-party/licenses/Apache-2.0.txt`, `third-party/licenses/SQLite-JDBC-Zentus.txt`; the original licenses are also embedded in the JAR. [Versioned source](https://github.com/xerial/sqlite-jdbc/tree/3.50.3.0) |
+| SQLite engine in SQLite JDBC native libraries | 3.50.3 | Public domain | [SQLite copyright statement](https://www.sqlite.org/copyright.html); [JDBC release](https://github.com/xerial/sqlite-jdbc/releases/tag/3.50.3.0) |
 
 The bundled Azul Zulu Java 21 runtime contains its own license and
 third-party notices in each application's `runtime/legal/` directory. Preserve
