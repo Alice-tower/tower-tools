@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong
 class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.dataDirectory.resolve("library.sqlite")) : AutoCloseable {
     var data by mutableStateOf(Snapshot()); private set
     var selected by mutableStateOf<Set<String>>(emptySet())
+    var previewRevision by mutableStateOf(0L); private set
     var total by mutableStateOf(0); private set
     var offset by mutableStateOf(0); private set
     val pageSize = 200
@@ -111,7 +112,7 @@ class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.
                 try { metadata = library!!.overview(); loadPage(generation.get(), true); loadFocus(focusGeneration.get()); loadEditCounts(editGeneration.get()) }
                 catch (e: Exception) { succeeded = false; failure(e); ui { querying = false } }
             }
-            ui { busy = null; if (succeeded) { message = "$label · 完成"; onSuccess() } }
+            ui { if (refresh) previewRevision++; busy = null; if (succeeded) { message = "$label · 完成"; onSuccess() } }
         }
     }
     private fun failure(e: Exception) {

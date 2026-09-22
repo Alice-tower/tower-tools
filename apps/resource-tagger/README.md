@@ -4,7 +4,7 @@
 
 - 项目：`ResourceTagger`
 - Application ID：`dev.towertools.resourcetagger`
-- 版本：`1.1.0`
+- 版本：`1.2.0`
 - 作者：`Alice-tower`
 - 源目录：`apps/resource-tagger`
 - 产品依据：[完整 v0.2 方案](PRODUCT_SPEC.md)
@@ -17,6 +17,14 @@
 4. 左栏搜索标签或别名，选择“不限 / 包含 + / 排除 −”。所有包含项必须同时满足，命中任一排除项即排除。
 5. 资源可按名称、Root、类型、状态或无标签筛选。列表每页加载 200 条，使用上一页 / 下一页浏览。跨页勾选保留，“全选结果”覆盖全部匹配资源。使用“批量标签”添加或移除指定标签。标签管理支持改名、删除和别名维护。
 6. 单击查看详情；右键或详情按钮可导航。目录支持进入自身和在父目录中选中，文件仅支持在父目录中选中，不提供文件打开和预览。
+
+## 浏览方式与预览扩展
+
+1.2.0 顶部增加“浏览方式”，当前正式内置的选项只有“标准列表”。右侧固定“资源信息”Tab 保留全部原有操作。切换扩展的入口已具备，但尚未提供漫画、图片缩略图或专属查看器。
+
+内部插件可以替换浏览区布局、增加详情 Tab、追加右键动作；筛选、分页、跨页选择、标签和资源管理仍由主程序负责。预览任务使用独立的有限并发队列，失败不改变资源状态。插件配置与缓存按插件 ID 放在应用数据目录的 `plugins/<id>/config`、`plugins/<id>/cache` 下，按需创建。
+
+当前实现、后续接入规范与尚未实现的能力见 [预览扩展架构](PREVIEW_ARCHITECTURE.md)。这些约定是可调整的工作基线，不是不可修改的限制；发现更合适的实现时，可以同步优化主程序、插件、测试和文档。
 
 ## 状态与保护
 
@@ -55,7 +63,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/Build-Launcher.p
 
 ## 实现结构与限制
 
-`FileSystem` 集中处理路径、扫描和导航；`Database` 定义版本及约束、缓存有限数量的预编译语句；`Library` 处理事务和身份；`LibraryQueries` 在 SQLite 中执行筛选、统计和分页；`Models` 保留查询模型和用于一致性校验的内存参考实现；`LibraryController` 在后台串行执行操作，并对查询防抖、丢弃过期结果；`LibraryApp` 提供三栏界面、Root / 标签管理与确认流程。
+`FileSystem` 集中处理路径、扫描和导航；`Database` 定义版本及约束、缓存有限数量的预编译语句；`Library` 处理事务和身份；`LibraryQueries` 在 SQLite 中执行筛选、统计和分页；`Models` 保留查询模型和用于一致性校验的内存参考实现；`LibraryController` 在后台串行执行操作，并对查询防抖、丢弃过期结果；`LibraryApp` 负责页面组装、Root / 标签管理与确认流程；`ResourceBrowser`、`ResourceDetails`、`ResourceActions` 分别负责浏览、详情和管理动作；`PreviewPlugin`、`PreviewRegistry`、`PreviewHost` 提供内部预览扩展契约、注册与宿主能力。
 
 不含递归索引、实时监听、内容解析、哈希身份、OR 查询、标签继承、自动移动识别或媒体预览。相同路径、相同类型的内容替换无法自动识别；遵循 Windows 常规大小写不敏感路径规则，检测到冲突时拒绝扫描。
 

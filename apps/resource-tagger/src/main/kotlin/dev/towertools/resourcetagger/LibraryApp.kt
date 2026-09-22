@@ -1,9 +1,6 @@
 package dev.towertools.resourcetagger
 
-import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +14,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -27,8 +23,15 @@ import javax.swing.JFileChooser
 private data class Form(val title: String, val labels: List<String>, val initial: List<String>, val explanation: String = "", val browse: Int? = null, val directoriesOnly: Boolean = true, val mergeOption: Boolean = false, val save: (Library, List<String>, Boolean) -> Unit)
 private data class Confirmation(val title: String, val body: String, val action: (Library) -> Unit)
 
-@Composable fun LibraryApp(owner: Window?, controller: LibraryController = remember { LibraryController() }) {
+@Composable fun LibraryApp(owner: Window?, controller: LibraryController = remember { LibraryController() }, registry: PreviewRegistry = remember { PreviewRegistry() }) {
     DisposableEffect(controller) { onDispose { controller.close() } }
+    val previewRuntime = remember { PreviewRuntime() }
+    DisposableEffect(previewRuntime) { onDispose { previewRuntime.close() } }
+    var pluginId by remember { mutableStateOf(StandardPreviewPlugin.id) }
+    var previewRefresh by remember { mutableStateOf(0) }
+    val plugin = registry.find(pluginId)
+    val previewHost = remember(plugin.id, controller.previewRevision, previewRefresh) { previewRuntime.host(plugin.id) }
+    DisposableEffect(previewHost) { onDispose { previewHost.close() } }
     val data = controller.data
     var page by remember { mutableStateOf("资源") }
     var query by remember { mutableStateOf(Query()) }
@@ -63,29 +66,19 @@ private data class Confirmation(val title: String, val body: String, val action:
     fun removeResource(resource: Resource) {
         confirmation = Confirmation("仅从数据库移除", "移除「${resource.name}」的记录、标签关联和待处理项，不删除磁盘内容。仍存在的对象下次扫描会重新发现；长期隐藏请使用“忽略”。") { it.removeResource(resource.id) }
     }
-    fun navigate(resource: Resource, open: Boolean) {
-        val root = data.roots.single { it.id == resource.rootId }
-        controller.submit(if (open) "打开目录" else "在所在目录中显示", refresh = false) { Navigator.navigate(root, resource, open) }
+    val actions = ResourceActions(data, busy, controller, { editTags = setOf(it) }, ::relocation, ::removeResource) { resource, pending ->
+        confirmation = Confirmation("确认类型变化", "将「${resource.name}」由${resource.kind.title}改为${pending.observedKind?.title}，保留原 ID 和所有标签，并关联到当前对象。") { it.acceptType(resource.id) }
     }
-    fun menu(resource: Resource): List<ContextMenuItem> = buildList {
-        if (!busy) {
-            if (resource.status == Status.Active) {
-                if (resource.kind == Kind.Directory) add(ContextMenuItem("打开目录") { navigate(resource, true) })
-                add(ContextMenuItem("在所在目录中显示") { navigate(resource, false) })
-            }
-            add(ContextMenuItem("编辑标签") { editTags = setOf(resource.id) })
-            if (resource.status == Status.Missing) {
-                add(ContextMenuItem("重新定位") { relocation(resource) })
-                if (data.reviews.none { it.resourceId == resource.id && it.reason == Reason.TypeChanged }) add(ContextMenuItem("保留记录") { controller.submit("保留记录") { it.acknowledge(resource.id) } })
-            }
-            if (resource.status == Status.Ignored) add(ContextMenuItem("取消忽略") { controller.submit("取消忽略") { it.unignore(resource.id) } })
-            else add(ContextMenuItem("忽略") { controller.submit("忽略资源") { it.ignore(resource.id) } })
-            add(ContextMenuItem("从数据库移除") { removeResource(resource) })
-        }
+    fun menu(resource: Resource): List<ContextMenuItem> = actions.menu(resource) + if (busy || resource.status != Status.Active) emptyList() else {
+        val target = PreviewTarget(rootsById.getValue(resource.rootId), resource)
+        val contributions = try { checkedContributions(plugin.actions(target)) { it.id } }
+        catch (e: Exception) { previewHost.report(e); emptyList() }
+        contributions.map { action -> ContextMenuItem(action.title) { previewHost.execute(action, target) } }
     }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("本地资源语义管理器", style = MaterialTheme.typography.h6, modifier = Modifier.weight(1f))
+            PreviewChooser(registry, plugin.id) { pluginId = it }
             listOf("资源", "Root 管理", "标签管理").forEach { destination ->
                 OutlinedButton(onClick = { page = destination }) { Text(if (page == destination) "● $destination" else destination) }
             }
@@ -186,57 +179,22 @@ private data class Confirmation(val title: String, val body: String, val action:
                     }
                     if (data.roots.isEmpty()) Text("还没有 Root。添加一个资源目录，然后在 Root 管理中扫描。", modifier = Modifier.padding(20.dp))
                     else if (results.isEmpty()) Text(if (query.reviewOnly) "没有待处理资源。" else "没有匹配结果。可清空筛选，或手动扫描 Root。", modifier = Modifier.padding(20.dp))
-                    LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(results, key = { it.id }) { resource ->
-                            ContextMenuArea(items = { menu(resource) }) {
-                                Row(Modifier.fillMaxWidth().background(if (resource.id == focused) MaterialTheme.colors.primary.copy(alpha = .12f) else MaterialTheme.colors.surface).clickable { focused = resource.id }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(resource.id in selected, { controller.selected = if (it) selected + resource.id else selected - resource.id; focused = resource.id }, enabled = !busy && !controller.querying, modifier = Modifier.semantics { contentDescription = "选择资源 ${resource.name}" })
-                                    Column(Modifier.weight(1f)) {
-                                        Text("${if (resource.kind == Kind.Directory) "▣" else "▤"} ${resource.name}", maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
-                                        Text("${resource.kind.title} · ${rootsById[resource.rootId]?.name} · ${resource.status.title}", style = MaterialTheme.typography.caption)
-                                        Text(data.links[resource.id].orEmpty().mapNotNull { tagsById[it]?.name }.sorted().joinToString(" · ").ifEmpty { "无标签" }, style = MaterialTheme.typography.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                        val reviews = reviewsByResource[resource.id].orEmpty()
-                                        if (reviews.isNotEmpty()) Text(reviews.joinToString { it.reason.title }, color = MaterialTheme.colors.primary, style = MaterialTheme.typography.caption)
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    val browserContext = BrowserContext(
+                        results.map { resource -> BrowserItem(PreviewTarget(rootsById.getValue(resource.rootId), resource), data.links[resource.id].orEmpty().mapNotNull { tagsById[it]?.name }.sorted(), reviewsByResource[resource.id].orEmpty()) },
+                        selected, focused, !busy && !controller.querying,
+                        { focused = it },
+                        { id, checked -> controller.selected = if (checked) selected + id else selected - id; focused = id },
+                        ::menu,
+                    )
+                    ResourceBrowser(plugin, browserContext, previewHost, Modifier.weight(1f))
                 }
                 Divider(Modifier.width(1.dp).fillMaxHeight())
-                Column(Modifier.width(295.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("资源详情", fontWeight = FontWeight.Bold)
-                    if (detail == null) Text(if (controller.detailLoading) "正在读取详情…" else "单击资源查看详情；勾选可批量编辑标签。")
-                    else {
-                        val root = data.roots.single { it.id == detail.rootId }
-                        Text(detail.name, style = MaterialTheme.typography.h6)
-                        Text("${detail.kind.title} · ${detail.status.title}")
-                        Text("Root：${root.name}")
-                        SelectionContainer { Text(PathsPolicy.actual(root, detail).toString(), style = MaterialTheme.typography.body2) }
-                        if (root.error != null) Text("Root 最近扫描失败：${root.error}", color = MaterialTheme.colors.error)
-                        Text("创建：${detail.created}", style = MaterialTheme.typography.caption)
-                        Text("最近发现：${detail.lastSeen ?: "—"}", style = MaterialTheme.typography.caption)
-                        Divider()
-                        Text("标签", fontWeight = FontWeight.Bold)
-                        Text(detailData.links[detail.id].orEmpty().mapNotNull { tagsById[it]?.name }.sorted().joinToString(" · ").ifEmpty { "尚无标签" })
-                        OutlinedButton(enabled = !busy, onClick = { editTags = setOf(detail.id) }) { Text("编辑标签") }
-                        if (detail.status == Status.Active) {
-                            if (detail.kind == Kind.Directory) Button(enabled = !busy, onClick = { navigate(detail, true) }) { Text("打开目录") }
-                            OutlinedButton(enabled = !busy, onClick = { navigate(detail, false) }) { Text("在所在目录中显示") }
-                        }
-                        detailData.reviews.forEach { pending ->
-                            Text("待处理：${pending.reason.title}", color = MaterialTheme.colors.primary)
-                            if (pending.reason == Reason.TypeChanged) {
-                                Text("当前对象是${pending.observedKind?.title}。确认后，原有标签将关联到当前对象。")
-                                Button(enabled = !busy, onClick = { confirmation = Confirmation("确认类型变化", "将「${detail.name}」由${detail.kind.title}改为${pending.observedKind?.title}，保留原 ID 和所有标签，并关联到当前对象。") { it.acceptType(detail.id) } }) { Text("确认关联当前对象") }
-                            } else Button(enabled = !busy, onClick = { controller.submit(if (pending.reason == Reason.New) "确认收录" else "保留记录") { it.acknowledge(detail.id) } }) { Text(if (pending.reason == Reason.New) "确认收录" else "保留记录并确认提醒") }
-                        }
-                        if (detail.status != Status.Ignored) OutlinedButton(enabled = !busy, onClick = { relocation(detail) }) { Text("重新定位") }
-                        OutlinedButton(enabled = !busy, onClick = { controller.submit(if (detail.status == Status.Ignored) "取消忽略" else "忽略资源") { if (detail.status == Status.Ignored) it.unignore(detail.id) else it.ignore(detail.id) } }) { Text(if (detail.status == Status.Ignored) "取消忽略" else "忽略") }
-                        TextButton(enabled = !busy, onClick = { removeResource(detail) }) { Text("从数据库移除") }
-                    }
-                }
+                ResourceDetails(detail?.let { PreviewTarget(rootsById.getValue(it.rootId), it) }, detailData, tagsById, controller.detailLoading, actions, plugin, previewHost, Modifier.width(295.dp).fillMaxHeight())
             }
+        }
+        if (plugin.id != StandardPreviewPlugin.id) Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { previewRefresh++ }) { Text("刷新预览") }
+            previewHost.error?.let { Text(it, color = MaterialTheme.colors.error, modifier = Modifier.weight(1f)); TextButton(onClick = previewHost::clearError) { Text("关闭预览提示") } }
         }
         if (busy || controller.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         Text(controller.busy ?: if (controller.querying) "正在查询…" else controller.message, style = MaterialTheme.typography.caption)
