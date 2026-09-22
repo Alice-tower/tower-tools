@@ -1,12 +1,10 @@
 package dev.towertools.resourcetagger
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import org.junit.Rule
@@ -69,7 +67,7 @@ class PreviewUiTest {
         } finally { release.countDown(); host.close() }
     }
 
-    @Test fun `plugin grid tabs and actions retain resource management and selection across pages`() {
+    @Test fun `host layouts tabs and actions retain resource management and selection across pages`() {
         val rootPath = folder.newFolder("preview").toPath()
         Files.writeString(rootPath.resolve("entry-0000"), "preview content")
         val database = folder.root.toPath().resolve("library.sqlite")
@@ -82,17 +80,6 @@ class PreviewUiTest {
         val plugin = object : PreviewPlugin {
             override val id = "test-grid"
             override val title = "测试网格"
-            override val browser = PreviewBrowser { context, _, modifier ->
-                Column(modifier) {
-                    Text("测试浏览区 ${context.items.size}")
-                    // Invoke exactly the same menu model as ResourceItemFrame's right-click menu.
-                    val target = context.items.first()
-                    Button(onClick = { context.menu(target.resource).single { it.label == "测试失败动作" }.onClick() }) { Text("执行测试菜单") }
-                    LazyVerticalGrid(GridCells.Fixed(2), Modifier.weight(1f)) {
-                        items(context.items, key = { it.resource.id }) { item -> ResourceItemFrame(item, context) { StandardResourceContent(item) } }
-                    }
-                }
-            }
             override fun tabs(target: PreviewTarget) = listOf(PreviewTab("test-tab", "测试预览") { current, host ->
                 when (val result = rememberPreview(host, current) { loads.incrementAndGet(); Files.readString(host.files.resolve(current)) }) {
                     PreviewLoad.Loading -> Text("测试预览加载中")
@@ -110,7 +97,7 @@ class PreviewUiTest {
         rule.setContent { MaterialTheme { Surface { LibraryApp(null, controller, PreviewRegistry(listOf(StandardPreviewPlugin, plugin, tabsOnly))) } } }
         fun idle() { rule.waitForIdle(); rule.waitUntil(10000) { controller.busy == null && !controller.loading }; rule.waitForIdle() }
         fun choose(current: String, next: String) {
-            rule.onNodeWithText("浏览方式：$current").performClick()
+            rule.onNodeWithText("预览插件：$current").performClick()
             rule.onNodeWithText(next, substring = false).performClick(); idle()
         }
         idle()
@@ -119,8 +106,9 @@ class PreviewUiTest {
         val selected = controller.selected
         val focused = controller.focusData.resources.single().id
         rule.onNodeWithText("下一页").performClick(); idle()
-        choose("标准列表", "测试网格")
-        rule.onNodeWithText("测试浏览区 200").assertExists()
+        choose("标准", "测试网格")
+        rule.onNodeWithText("网格", substring = false).performClick()
+        rule.onNodeWithTag("resource-grid").assertExists()
         assertEquals(450, controller.total); assertEquals(200, controller.offset)
         assertEquals(selected, controller.selected); assertEquals(focused, controller.focusData.resources.single().id)
         assertEquals(0, loads.get())
@@ -130,7 +118,8 @@ class PreviewUiTest {
         rule.onNodeWithText("资源信息").performClick()
         rule.onNodeWithText("编辑标签", substring = false).assertExists()
         rule.onNodeWithText("上一页").performClick(); idle()
-        rule.onNodeWithText("执行测试菜单").performClick()
+        rule.onNodeWithText("▤ entry-0000").performMouseInput { click(button = MouseButton.Secondary) }
+        rule.onNodeWithText("测试失败动作").performClick()
         rule.waitUntil(10000) { rule.onAllNodesWithText("测试预览失败").fetchSemanticsNodes().isNotEmpty() }
         assertNull(controller.error); assertEquals(selected, controller.selected)
         rule.onNodeWithContentDescription("全选结果").performClick(); idle()
@@ -139,10 +128,18 @@ class PreviewUiTest {
         assertEquals(450, controller.editCounts.values.single())
         rule.onNodeWithText("完成", substring = false).performClick()
         choose("测试网格", "仅详情扩展")
-        rule.onNodeWithText("测试浏览区 200").assertDoesNotExist()
+        rule.onNodeWithTag("resource-grid").assertExists()
         rule.onNodeWithText("▤ entry-0000").assertExists()
         assertEquals(450, controller.selected.size)
-        choose("仅详情扩展", "标准列表")
+        choose("仅详情扩展", "标准")
+        rule.onNodeWithText("画廊", substring = false).performClick(); idle()
+        rule.onNodeWithTag("resource-gallery").assertExists()
+        val screenshot = java.io.File("build/verification/gallery-ui.png").apply { parentFile.mkdirs() }
+        javax.imageio.ImageIO.write(rule.onRoot().captureToImage().toAwtImage(), "png", screenshot)
+        assertEquals(450, controller.selected.size)
+        assertEquals(focused, controller.focusData.resources.single().id)
+        rule.onNodeWithText("列表", substring = false).performClick(); idle()
+        rule.onNodeWithTag("resource-list").assertExists()
         rule.onNodeWithText("搜索资源名称或相对路径").assertTextContains("entry")
         assertEquals("preview content", Files.readString(rootPath.resolve("entry-0000")))
     }

@@ -2,18 +2,33 @@ package dev.towertools.resourcetagger
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.IntSize
 
 /** Internal, source-level contract. No binary compatibility or untrusted-code sandbox. */
 interface PreviewPlugin {
     val id: String
     val title: String
-    val browser: PreviewBrowser? get() = null
+    val thumbnail: ThumbnailProvider? get() = null
+    val largePreview: LargePreviewProvider? get() = null
     fun tabs(target: PreviewTarget): List<PreviewTab> = emptyList()
     fun actions(target: PreviewTarget): List<PreviewAction> = emptyList()
 }
 
-fun interface PreviewBrowser {
-    @Composable fun Content(context: BrowserContext, host: PreviewHost, modifier: Modifier)
+enum class BrowserLayout(val title: String) { List("列表"), Grid("网格"), Gallery("画廊") }
+/** Physical pixels. Large fallback requests use the actual large area, not a small cached image. */
+data class PreviewRequest(val target: PreviewTarget, val size: IntSize)
+fun interface ThumbnailProvider {
+    fun load(request: PreviewRequest, host: PreviewHost): ImageBitmap?
+}
+fun interface LargePreviewProvider {
+    @Composable fun present(request: PreviewRequest, host: PreviewHost): PreviewPresentation
+}
+sealed interface PreviewPresentation {
+    data object Loading : PreviewPresentation
+    data object Unavailable : PreviewPresentation
+    data class Failed(val message: String) : PreviewPresentation
+    data class Ready(val content: @Composable (Modifier) -> Unit) : PreviewPresentation
 }
 
 data class PreviewTarget(val root: Root, val resource: Resource)
@@ -33,6 +48,7 @@ data class BrowserContext(
     val focus: (String) -> Unit,
     val select: (String, Boolean) -> Unit,
     val menu: (Resource) -> List<androidx.compose.foundation.ContextMenuItem>,
+    val focusedItem: BrowserItem? = null,
 )
 
 class PreviewRegistry(plugins: List<PreviewPlugin> = listOf(StandardPreviewPlugin)) {

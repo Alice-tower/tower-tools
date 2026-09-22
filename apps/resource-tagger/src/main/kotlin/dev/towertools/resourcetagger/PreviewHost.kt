@@ -22,6 +22,7 @@ class PreviewTasks internal constructor(private val executor: ThreadPoolExecutor
     constructor() : this(previewExecutor(), true)
     private val pending = ConcurrentHashMap.newKeySet<FutureTask<Unit>>()
     private val closed = AtomicBoolean()
+    internal fun child() = PreviewTasks(executor, false)
     @Synchronized fun <T> submit(work: () -> T, complete: (Result<T>) -> Unit): AutoCloseable {
         val cancelled = AtomicBoolean()
         fun deliver(result: Result<T>) = EventQueue.invokeLater {
@@ -68,7 +69,7 @@ class PreviewAccess {
 }
 
 /** One host per active plugin/revision. Disposing it invalidates all pending completions. */
-class PreviewHost(val pluginId: String, dataDirectory: Path = AppPaths.dataDirectory, val tasks: PreviewTasks = PreviewTasks()) : AutoCloseable {
+class PreviewHost(val pluginId: String, private val dataDirectory: Path = AppPaths.dataDirectory, val tasks: PreviewTasks = PreviewTasks()) : AutoCloseable {
     private val active = AtomicBoolean(true)
     val files = PreviewAccess()
     val storage = PreviewStorage(dataDirectory, pluginId)
@@ -78,6 +79,7 @@ class PreviewHost(val pluginId: String, dataDirectory: Path = AppPaths.dataDirec
         this.error = error.message ?: error.javaClass.simpleName
     }
     fun clearError() { error = null }
+    internal fun child() = PreviewHost(pluginId, dataDirectory, tasks.child())
     fun onUi(action: () -> Unit) = EventQueue.invokeLater { if (active.get()) action() }
     fun execute(action: PreviewAction, target: PreviewTarget) {
         tasks.submit({ files.resolve(target); action.execute(target, this) }) { result ->

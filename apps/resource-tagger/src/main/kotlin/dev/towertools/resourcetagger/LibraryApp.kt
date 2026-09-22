@@ -27,6 +27,7 @@ private data class Confirmation(val title: String, val body: String, val action:
     DisposableEffect(controller) { onDispose { controller.close() } }
     val previewRuntime = remember { PreviewRuntime() }
     DisposableEffect(previewRuntime) { onDispose { previewRuntime.close() } }
+    var browserLayout by remember { mutableStateOf(BrowserLayout.List) }
     var pluginId by remember { mutableStateOf(StandardPreviewPlugin.id) }
     var previewRefresh by remember { mutableStateOf(0) }
     val plugin = registry.find(pluginId)
@@ -164,6 +165,11 @@ private data class Confirmation(val title: String, val body: String, val action:
                 Divider(Modifier.width(1.dp).fillMaxHeight())
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(query.text, { query = query.copy(text = it) }, label = { Text("搜索资源名称或相对路径") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BrowserLayout.entries.forEach { layout ->
+                            OutlinedButton(onClick = { browserLayout = layout }) { Text(if (browserLayout == layout) "● ${layout.title}" else layout.title) }
+                        }
+                    }
                     val activeFilters = data.tags.mapNotNull { tag -> when (query.tags[tag.id]) { TagFilter.Include -> "+ ${tag.name}"; TagFilter.Exclude -> "− ${tag.name}"; else -> null } }
                     if (activeFilters.isNotEmpty()) Text(activeFilters.joinToString("   "), style = MaterialTheme.typography.caption)
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -185,8 +191,9 @@ private data class Confirmation(val title: String, val body: String, val action:
                         { focused = it },
                         { id, checked -> controller.selected = if (checked) selected + id else selected - id; focused = id },
                         ::menu,
+                        detail?.let { BrowserItem(PreviewTarget(rootsById.getValue(it.rootId), it), detailData.links[it.id].orEmpty().mapNotNull { id -> tagsById[id]?.name }.sorted(), detailData.reviews) },
                     )
-                    ResourceBrowser(plugin, browserContext, previewHost, Modifier.weight(1f))
+                    ResourceBrowser(plugin, browserContext, previewHost, Modifier.weight(1f), browserLayout)
                 }
                 Divider(Modifier.width(1.dp).fillMaxHeight())
                 ResourceDetails(detail?.let { PreviewTarget(rootsById.getValue(it.rootId), it) }, detailData, tagsById, controller.detailLoading, actions, plugin, previewHost, Modifier.width(295.dp).fillMaxHeight())

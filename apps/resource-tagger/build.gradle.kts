@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.resourcetagger"
-version = "1.2.1"
+version = "1.3.0"
 
 kotlin {
     jvmToolchain(21)
@@ -32,7 +32,7 @@ compose.desktop {
         nativeDistributions {
             modules("java.sql", "jdk.unsupported")
             packageName = "ResourceTagger"
-            packageVersion = "1.2.1"
+            packageVersion = "1.3.0"
             vendor = "Alice-tower"
         }
     }
