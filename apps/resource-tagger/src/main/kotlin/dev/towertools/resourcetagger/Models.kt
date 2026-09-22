@@ -14,14 +14,19 @@ data class Tag(val id: String, val name: String, val aliases: List<String>) {
     fun matches(query: String) = (listOf(name) + aliases).any { normalizedName(it).contains(normalizedName(query)) }
 }
 data class Review(val id: String, val resourceId: String, val reason: Reason, val observedKind: Kind?)
-data class Snapshot(val roots: List<Root> = emptyList(), val resources: List<Resource> = emptyList(), val tags: List<Tag> = emptyList(), val links: Map<String, Set<String>> = emptyMap(), val reviews: List<Review> = emptyList())
+data class Snapshot(val roots: List<Root> = emptyList(), val resources: List<Resource> = emptyList(), val tags: List<Tag> = emptyList(), val links: Map<String, Set<String>> = emptyMap(), val reviews: List<Review> = emptyList(), val rootCounts: Map<String, Int> = emptyMap(), val tagCounts: Map<String, Int> = emptyMap(), val pendingCount: Int = reviews.size)
+data class ResourcePage(val snapshot: Snapshot, val total: Int, val offset: Int, val pageSize: Int)
 data class Query(val text: String = "", val rootId: String? = null, val kind: Kind? = null, val status: Status? = null, val untagged: Boolean = false, val reviewOnly: Boolean = false, val tags: Map<String, TagFilter> = emptyMap()) {
-    fun apply(data: Snapshot): List<Resource> = data.resources.filter { r ->
+    fun apply(data: Snapshot): List<Resource> {
+        val pending = data.reviews.mapTo(HashSet()) { it.resourceId }
+        val search = normalizedName(text)
+        return data.resources.filter { r ->
         val assigned = data.links[r.id].orEmpty()
         (rootId == null || r.rootId == rootId) && (kind == null || r.kind == kind) &&
             (if (status == null) r.status != Status.Ignored else r.status == status) &&
-            (!untagged || assigned.isEmpty()) && (!reviewOnly || data.reviews.any { it.resourceId == r.id }) &&
-            (normalizedName(r.name).contains(normalizedName(text)) || normalizedName(r.relativePath).contains(normalizedName(text))) &&
+            (!untagged || assigned.isEmpty()) && (!reviewOnly || r.id in pending) &&
+            (normalizedName(r.name).contains(search) || normalizedName(r.relativePath).contains(search)) &&
             tags.all { (id, mode) -> when (mode) { TagFilter.Neutral -> true; TagFilter.Include -> id in assigned; TagFilter.Exclude -> id !in assigned } }
     }.sortedWith(compareBy({ normalizedName(it.name) }, { it.id }))
+    }
 }

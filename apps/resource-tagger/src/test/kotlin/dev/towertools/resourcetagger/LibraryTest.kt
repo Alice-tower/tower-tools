@@ -151,7 +151,7 @@ class LibraryTest {
     }
     @Test fun `schema guards foreign keys and future versions`() {
         val file = temp.resolve("schema.sqlite")
-        Database(file).use { db -> assertFails { db.execute("INSERT INTO resource_tags VALUES('missing','missing')") }; assertEquals(1, db.query("PRAGMA user_version") { it.getInt(1) }.single()); db.execute("PRAGMA user_version=2") }
+        Database(file).use { db -> assertFails { db.execute("INSERT INTO resource_tags VALUES('missing','missing')") }; assertEquals(2, db.query("PRAGMA user_version") { it.getInt(1) }.single()); db.execute("PRAGMA user_version=3") }
         assertFails { Database(file) }
     }
     @Test fun `navigator quotes are handled as argument boundaries without invoking a shell`() {

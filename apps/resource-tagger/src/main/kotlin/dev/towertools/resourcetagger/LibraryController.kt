@@ -4,44 +4,119 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.awt.EventQueue
-import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.dataDirectory.resolve("library.sqlite")) : AutoCloseable {
     var data by mutableStateOf(Snapshot()); private set
+    var selected by mutableStateOf<Set<String>>(emptySet())
+    var total by mutableStateOf(0); private set
+    var offset by mutableStateOf(0); private set
+    val pageSize = 200
+    var querying by mutableStateOf(true); private set
+    var focusData by mutableStateOf(Snapshot()); private set
+    var detailLoading by mutableStateOf(false); private set
+    var editCounts by mutableStateOf<Map<String, Int>>(emptyMap()); private set
+    var editLoading by mutableStateOf(false); private set
     var busy by mutableStateOf<String?>("正在打开资料库…"); private set
     var error by mutableStateOf<String?>(null); private set
     var message by mutableStateOf("添加 Root，开始组织本地资源。"); private set
-    private val executor = Executors.newSingleThreadExecutor { task -> Thread(task, "resource-library").apply { isDaemon = true } }
+    val loading get() = querying || detailLoading || editLoading
+    private val executor = ScheduledThreadPoolExecutor(1) { task -> Thread(task, "resource-library").apply { isDaemon = true } }.apply { removeOnCancelPolicy = true }
+    private val generation = AtomicLong()
+    private val focusGeneration = AtomicLong()
+    private val editGeneration = AtomicLong()
+    @Volatile private var closed = false
+    @Volatile private var query = Query()
+    @Volatile private var requestedOffset = 0
+    @Volatile private var focused: String? = null
+    @Volatile private var editing: Set<String> = emptySet()
+    private var scheduled: ScheduledFuture<*>? = null
     private var library: Library? = null
+    private var metadata = Snapshot()
     init {
-        executor.submit {
+        executor.execute {
             try {
                 library = Library(Database(databasePath))
-                val initial = library!!.snapshot()
-                EventQueue.invokeLater { data = initial; busy = null }
-            } catch (e: Exception) { failure(e) }
+                metadata = library!!.overview()
+                loadPage(generation.get())
+                ui { busy = null }
+            } catch (e: Exception) { failure(e); ui { busy = null; querying = false } }
         }
     }
+    private fun ui(block: () -> Unit) = EventQueue.invokeLater { if (!closed) block() }
     fun clearError() { error = null }
-    fun submit(label: String, onSuccess: () -> Unit = {}, action: (Library) -> Unit) {
-        if (busy != null) return
-        busy = label; error = null
-        executor.submit {
-            try {
-                val current = library ?: error("资料库未能打开，请检查错误并重启。")
-                action(current)
-                val refreshed = current.snapshot()
-                EventQueue.invokeLater { data = refreshed; busy = null; message = "$label · 完成"; onSuccess() }
-            } catch (e: Exception) {
-                val refreshed = runCatching { library?.snapshot() }.getOrNull()
-                EventQueue.invokeLater { refreshed?.let { data = it } }
-                failure(e)
+    fun search(value: Query, start: Int = 0, debounce: Boolean = true) {
+        if (query != value) selected = emptySet()
+        query = value; requestedOffset = start; querying = true
+        val token = generation.incrementAndGet()
+        scheduled?.cancel(false)
+        scheduled = executor.schedule({
+            if (!closed && token == generation.get()) try { loadPage(token) } catch (e: Exception) { if (token == generation.get()) { failure(e); ui { querying = false } } }
+        }, if (debounce) 150 else 0, TimeUnit.MILLISECONDS)
+    }
+    fun movePage(delta: Int) { search(query, (offset + delta * pageSize).coerceAtLeast(0), false) }
+    private fun loadPage(token: Long, pruneSelection: Boolean = false) {
+        val current = library ?: run { ui { if (token == generation.get()) querying = false }; return }
+        val result = current.queryPage(query, requestedOffset, pageSize)
+        val meta = metadata
+        val selection = selected
+        val retained = if (pruneSelection && selection.isNotEmpty()) current.retainedSelection(query, selection) else selection
+        ui {
+            if (token == generation.get()) {
+                data = meta.copy(resources = result.snapshot.resources, links = result.snapshot.links, reviews = result.snapshot.reviews)
+                total = result.total; offset = result.offset; requestedOffset = result.offset; querying = false
+                if (selected == selection) selected = retained
             }
+        }
+    }
+    fun focus(id: String?) {
+        focused = id; focusData = Snapshot(); detailLoading = id != null
+        val token = focusGeneration.incrementAndGet()
+        executor.execute { loadFocus(token) }
+    }
+    private fun loadFocus(token: Long) {
+        try {
+            val result = focused?.let { library?.detail(it) } ?: Snapshot()
+            ui { if (token == focusGeneration.get()) { focusData = result; detailLoading = false } }
+        } catch (e: Exception) { if (token == focusGeneration.get()) { failure(e); ui { detailLoading = false } } }
+    }
+    fun editSelection(ids: Set<String>) {
+        editing = ids; editCounts = emptyMap(); editLoading = ids.isNotEmpty()
+        val token = editGeneration.incrementAndGet()
+        executor.execute { loadEditCounts(token) }
+    }
+    private fun loadEditCounts(token: Long) {
+        try {
+            val counts = if (editing.isEmpty()) emptyMap() else library?.selectionCounts(editing).orEmpty()
+            ui { if (token == editGeneration.get()) { editCounts = counts; editLoading = false } }
+        } catch (e: Exception) { if (token == editGeneration.get()) { failure(e); ui { editLoading = false } } }
+    }
+    fun selectAll(onResult: (Set<String>) -> Unit) {
+        val requested = query
+        var ids = emptySet<String>()
+        submit("选择全部匹配资源", { if (query == requested) onResult(ids) }, refresh = false) { ids = it.matchingIds(requested) }
+    }
+    fun submit(label: String, onSuccess: () -> Unit = {}, refresh: Boolean = true, action: (Library) -> Unit) {
+        if (busy != null || closed) return
+        busy = label; error = null
+        if (refresh) { generation.incrementAndGet(); scheduled?.cancel(false); querying = true }
+        executor.execute {
+            var succeeded = false
+            try { action(library ?: error("资料库未能打开，请检查错误并重启。")); succeeded = true }
+            catch (e: Exception) { failure(e) }
+            if (refresh) {
+                try { metadata = library!!.overview(); loadPage(generation.get(), true); loadFocus(focusGeneration.get()); loadEditCounts(editGeneration.get()) }
+                catch (e: Exception) { succeeded = false; failure(e); ui { querying = false } }
+            }
+            ui { busy = null; if (succeeded) { message = "$label · 完成"; onSuccess() } }
         }
     }
     private fun failure(e: Exception) {
         AppLog.logger.log(java.util.logging.Level.WARNING, "Library operation failed", e)
-        EventQueue.invokeLater { error = e.message ?: e.javaClass.simpleName; busy = null }
+        ui { error = e.message ?: e.javaClass.simpleName }
     }
-    override fun close() { executor.submit { library?.close() }; executor.shutdown() }
+    override fun close() { closed = true; scheduled?.cancel(false); executor.execute { library?.close() }; executor.shutdown() }
 }

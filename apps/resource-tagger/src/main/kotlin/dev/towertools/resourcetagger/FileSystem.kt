@@ -4,7 +4,6 @@ import java.awt.Desktop
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
-import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.DosFileAttributes
 import java.util.Locale
 
@@ -35,13 +34,12 @@ interface ResourceFileSystem {
 }
 class LocalFileSystem : ResourceFileSystem {
     override fun inspect(path: Path): Kind? {
-        val basic = Files.readAttributes(path, BasicFileAttributes::class.java, NOFOLLOW_LINKS)
-        if (basic.isSymbolicLink || basic.isOther) return null
         val dos = Files.readAttributes(path, DosFileAttributes::class.java, NOFOLLOW_LINKS)
+        if (dos.isSymbolicLink || dos.isOther) return null
         if (dos.isHidden || dos.isSystem) return null
         // A junction may look like a directory on a provider: reject redirected children too.
         if (PathsPolicy.key(path.toRealPath()) != PathsPolicy.key(path)) return null
-        return when { basic.isDirectory -> Kind.Directory; basic.isRegularFile -> Kind.File; else -> null }
+        return when { dos.isDirectory -> Kind.Directory; dos.isRegularFile -> Kind.File; else -> null }
     }
     override fun scan(path: Path): List<Found> {
         require(Files.isDirectory(path)) { "Root 不存在或不可访问：$path" }

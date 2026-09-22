@@ -1,5 +1,7 @@
 # 第一版验收记录
 
+本文件保留 1.0.0 的历史验收结果；1.1.0 的性能优化、迁移与扩展回归结果见 [性能报告](PERFORMANCE.md)。
+
 日期：2026-09-22。版本：1.0.0。目标：Windows x64、Kotlin/JVM、Compose Desktop；对照 [产品方案 v0.2](PRODUCT_SPEC.md)。
 
 ## 交付范围对照

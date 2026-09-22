@@ -32,17 +32,23 @@ private data class Confirmation(val title: String, val body: String, val action:
     val data = controller.data
     var page by remember { mutableStateOf("资源") }
     var query by remember { mutableStateOf(Query()) }
-    var selected by remember { mutableStateOf(setOf<String>()) }
+    val selected = controller.selected
     var focused by remember { mutableStateOf<String?>(null) }
     var tagSearch by remember { mutableStateOf("") }
     var form by remember { mutableStateOf<Form?>(null) }
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
     var editTags by remember { mutableStateOf<Set<String>?>(null) }
     val busy = controller.busy != null
-    val results = query.apply(data)
-    val detail = data.resources.find { it.id == focused }
-    LaunchedEffect(data, query) {
-        selected = selected.intersect(results.map { it.id }.toSet())
+    val results = data.resources
+    val detailData = controller.focusData
+    val detail = detailData.resources.singleOrNull()?.takeIf { resource -> data.roots.any { it.id == resource.rootId } }
+    val tagsById = remember(data.tags) { data.tags.associateBy { it.id } }
+    val rootsById = remember(data.roots) { data.roots.associateBy { it.id } }
+    val reviewsByResource = remember(data.reviews) { data.reviews.groupBy { it.resourceId } }
+    LaunchedEffect(query) { controller.search(query) }
+    LaunchedEffect(focused) { controller.focus(focused) }
+    LaunchedEffect(editTags) { controller.editSelection(editTags.orEmpty()) }
+    LaunchedEffect(data.roots, data.tags) {
         query = query.copy(
             rootId = query.rootId?.takeIf { root -> data.roots.any { it.id == root } },
             tags = query.tags.filterKeys { tag -> data.tags.any { it.id == tag } },
@@ -59,7 +65,7 @@ private data class Confirmation(val title: String, val body: String, val action:
     }
     fun navigate(resource: Resource, open: Boolean) {
         val root = data.roots.single { it.id == resource.rootId }
-        controller.submit(if (open) "打开目录" else "在所在目录中显示") { Navigator.navigate(root, resource, open) }
+        controller.submit(if (open) "打开目录" else "在所在目录中显示", refresh = false) { Navigator.navigate(root, resource, open) }
     }
     fun menu(resource: Resource): List<ContextMenuItem> = buildList {
         if (!busy) {
@@ -105,7 +111,7 @@ private data class Confirmation(val title: String, val body: String, val action:
                                     Button(enabled = !busy, onClick = { controller.submit("扫描 ${root.name}") { it.scan(root.id) } }) { Text("扫描") }
                                     OutlinedButton(enabled = !busy, onClick = { form = Form("编辑 Root 名称", listOf("名称"), listOf(root.name)) { lib, values, _ -> lib.renameRoot(root.id, values[0]) } }) { Text("改名") }
                                     OutlinedButton(enabled = !busy, onClick = { rootForm(root) }) { Text("重新定位") }
-                                    TextButton(enabled = !busy, onClick = { confirmation = Confirmation("移除 Root", "将移除「${root.name}」及其 ${data.resources.count { it.rootId == root.id }} 条资源记录、关联和待处理项。保留所有标签定义及磁盘内容。") { it.removeRoot(root.id) } }) { Text("移除") }
+                                    TextButton(enabled = !busy, onClick = { confirmation = Confirmation("移除 Root", "将移除「${root.name}」及其 ${data.rootCounts[root.id] ?: 0} 条资源记录、关联和待处理项。保留所有标签定义及磁盘内容。") { it.removeRoot(root.id) } }) { Text("移除") }
                                 }
                             }
                         }
@@ -121,7 +127,7 @@ private data class Confirmation(val title: String, val body: String, val action:
                     items(data.tags.filter { it.matches(tagSearch) }, key = { it.id }) { tag ->
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(14.dp)) {
-                                val count = data.links.values.count { tag.id in it }
+                                val count = data.tagCounts[tag.id] ?: 0
                                 Text("${tag.name} · $count 个资源", fontWeight = FontWeight.Bold)
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     TextButton(enabled = !busy, onClick = { form = Form("修改规范名称", listOf("名称"), listOf(tag.name)) { lib, values, _ -> lib.renameTag(tag.id, values[0]) } }) { Text("改名") }
@@ -140,8 +146,8 @@ private data class Confirmation(val title: String, val body: String, val action:
             else -> Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Column(Modifier.width(245.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("范围与筛选", fontWeight = FontWeight.Bold)
-                    OutlinedButton(onClick = { query = Query(); selected = emptySet() }, modifier = Modifier.fillMaxWidth()) { Text("全部资源 / 清空筛选") }
-                    OutlinedButton(onClick = { query = Query(reviewOnly = true) }, modifier = Modifier.fillMaxWidth()) { Text("${if (query.reviewOnly) "● " else ""}待处理 · ${data.reviews.size}") }
+                    OutlinedButton(onClick = { query = Query(); controller.selected = emptySet() }, modifier = Modifier.fillMaxWidth()) { Text("全部资源 / 清空筛选") }
+                    OutlinedButton(onClick = { query = Query(reviewOnly = true) }, modifier = Modifier.fillMaxWidth()) { Text("${if (query.reviewOnly) "● " else ""}待处理 · ${data.pendingCount}") }
                     Choice("Root", listOf(null to "全部 Root") + data.roots.map { it.id to it.name }, query.rootId) { query = query.copy(rootId = it) }
                     Button(onClick = { rootForm() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("添加 Root") }
                     query.rootId?.let { rootId -> OutlinedButton(enabled = !busy, onClick = { controller.submit("扫描 Root") { it.scan(rootId) } }, modifier = Modifier.fillMaxWidth()) { Text("扫描当前 Root") } }
@@ -168,9 +174,15 @@ private data class Confirmation(val title: String, val body: String, val action:
                     val activeFilters = data.tags.mapNotNull { tag -> when (query.tags[tag.id]) { TagFilter.Include -> "+ ${tag.name}"; TagFilter.Exclude -> "− ${tag.name}"; else -> null } }
                     if (activeFilters.isNotEmpty()) Text(activeFilters.joinToString("   "), style = MaterialTheme.typography.caption)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(results.isNotEmpty() && selected.size == results.size, { selected = if (it) results.map { r -> r.id }.toSet() else emptySet() }, modifier = Modifier.semantics { contentDescription = "全选结果" })
-                        Text("${results.size} 项 · 已选 ${selected.size}", modifier = Modifier.weight(1f))
+                        Checkbox(controller.total > 0 && selected.size == controller.total, { if (it) controller.selectAll { ids -> controller.selected = ids } else controller.selected = emptySet() }, enabled = !busy && !controller.querying, modifier = Modifier.semantics { contentDescription = "全选结果" })
+                        Text("${controller.total} 项 · 已选 ${selected.size}", modifier = Modifier.weight(1f))
                         OutlinedButton(enabled = !busy && selected.isNotEmpty(), onClick = { editTags = selected }) { Text("批量标签") }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("全选覆盖全部匹配结果", style = MaterialTheme.typography.caption, modifier = Modifier.weight(1f))
+                        TextButton(enabled = !busy && !controller.querying && controller.offset > 0, onClick = { controller.movePage(-1) }) { Text("上一页") }
+                        Text("${controller.offset / controller.pageSize + 1} / ${maxOf(1, (controller.total + controller.pageSize - 1) / controller.pageSize)}", style = MaterialTheme.typography.caption)
+                        TextButton(enabled = !busy && !controller.querying && controller.offset + controller.pageSize < controller.total, onClick = { controller.movePage(1) }) { Text("下一页") }
                     }
                     if (data.roots.isEmpty()) Text("还没有 Root。添加一个资源目录，然后在 Root 管理中扫描。", modifier = Modifier.padding(20.dp))
                     else if (results.isEmpty()) Text(if (query.reviewOnly) "没有待处理资源。" else "没有匹配结果。可清空筛选，或手动扫描 Root。", modifier = Modifier.padding(20.dp))
@@ -178,12 +190,12 @@ private data class Confirmation(val title: String, val body: String, val action:
                         items(results, key = { it.id }) { resource ->
                             ContextMenuArea(items = { menu(resource) }) {
                                 Row(Modifier.fillMaxWidth().background(if (resource.id == focused) MaterialTheme.colors.primary.copy(alpha = .12f) else MaterialTheme.colors.surface).clickable { focused = resource.id }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(resource.id in selected, { selected = if (it) selected + resource.id else selected - resource.id; focused = resource.id }, modifier = Modifier.semantics { contentDescription = "选择资源 ${resource.name}" })
+                                    Checkbox(resource.id in selected, { controller.selected = if (it) selected + resource.id else selected - resource.id; focused = resource.id }, enabled = !busy && !controller.querying, modifier = Modifier.semantics { contentDescription = "选择资源 ${resource.name}" })
                                     Column(Modifier.weight(1f)) {
                                         Text("${if (resource.kind == Kind.Directory) "▣" else "▤"} ${resource.name}", maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
-                                        Text("${resource.kind.title} · ${data.roots.find { it.id == resource.rootId }?.name} · ${resource.status.title}", style = MaterialTheme.typography.caption)
-                                        Text(data.tags.filter { it.id in data.links[resource.id].orEmpty() }.joinToString(" · ") { it.name }.ifEmpty { "无标签" }, style = MaterialTheme.typography.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                        val reviews = data.reviews.filter { it.resourceId == resource.id }
+                                        Text("${resource.kind.title} · ${rootsById[resource.rootId]?.name} · ${resource.status.title}", style = MaterialTheme.typography.caption)
+                                        Text(data.links[resource.id].orEmpty().mapNotNull { tagsById[it]?.name }.sorted().joinToString(" · ").ifEmpty { "无标签" }, style = MaterialTheme.typography.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        val reviews = reviewsByResource[resource.id].orEmpty()
                                         if (reviews.isNotEmpty()) Text(reviews.joinToString { it.reason.title }, color = MaterialTheme.colors.primary, style = MaterialTheme.typography.caption)
                                     }
                                 }
@@ -194,7 +206,7 @@ private data class Confirmation(val title: String, val body: String, val action:
                 Divider(Modifier.width(1.dp).fillMaxHeight())
                 Column(Modifier.width(295.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("资源详情", fontWeight = FontWeight.Bold)
-                    if (detail == null) Text("单击资源查看详情；勾选可批量编辑标签。")
+                    if (detail == null) Text(if (controller.detailLoading) "正在读取详情…" else "单击资源查看详情；勾选可批量编辑标签。")
                     else {
                         val root = data.roots.single { it.id == detail.rootId }
                         Text(detail.name, style = MaterialTheme.typography.h6)
@@ -206,13 +218,13 @@ private data class Confirmation(val title: String, val body: String, val action:
                         Text("最近发现：${detail.lastSeen ?: "—"}", style = MaterialTheme.typography.caption)
                         Divider()
                         Text("标签", fontWeight = FontWeight.Bold)
-                        Text(data.tags.filter { it.id in data.links[detail.id].orEmpty() }.joinToString(" · ") { it.name }.ifEmpty { "尚无标签" })
+                        Text(detailData.links[detail.id].orEmpty().mapNotNull { tagsById[it]?.name }.sorted().joinToString(" · ").ifEmpty { "尚无标签" })
                         OutlinedButton(enabled = !busy, onClick = { editTags = setOf(detail.id) }) { Text("编辑标签") }
                         if (detail.status == Status.Active) {
                             if (detail.kind == Kind.Directory) Button(enabled = !busy, onClick = { navigate(detail, true) }) { Text("打开目录") }
                             OutlinedButton(enabled = !busy, onClick = { navigate(detail, false) }) { Text("在所在目录中显示") }
                         }
-                        data.reviews.filter { it.resourceId == detail.id }.forEach { pending ->
+                        detailData.reviews.forEach { pending ->
                             Text("待处理：${pending.reason.title}", color = MaterialTheme.colors.primary)
                             if (pending.reason == Reason.TypeChanged) {
                                 Text("当前对象是${pending.observedKind?.title}。确认后，原有标签将关联到当前对象。")
@@ -226,8 +238,8 @@ private data class Confirmation(val title: String, val body: String, val action:
                 }
             }
         }
-        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        Text(controller.busy ?: controller.message, style = MaterialTheme.typography.caption)
+        if (busy || controller.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        Text(controller.busy ?: if (controller.querying) "正在查询…" else controller.message, style = MaterialTheme.typography.caption)
         controller.error?.let { error -> Row(verticalAlignment = Alignment.CenterVertically) {
             Text(error, color = MaterialTheme.colors.error, modifier = Modifier.weight(1f))
             TextButton(onClick = controller::clearError) { Text("关闭提示") }
@@ -259,7 +271,7 @@ private data class Confirmation(val title: String, val body: String, val action:
             }
         }
     }
-    confirmation?.let { current -> AlertDialog(onDismissRequest = { if (!busy) confirmation = null }, title = { Text(current.title) }, text = { Column { Text(current.body); controller.error?.let { Text(it, color = MaterialTheme.colors.error) } } }, confirmButton = { Button(enabled = !busy, onClick = { controller.submit(current.title, { confirmation = null }, current.action) }) { Text("确认") } }, dismissButton = { TextButton(enabled = !busy, onClick = { confirmation = null }) { Text("取消") } }) }
+    confirmation?.let { current -> AlertDialog(onDismissRequest = { if (!busy) confirmation = null }, title = { Text(current.title) }, text = { Column { Text(current.body); controller.error?.let { Text(it, color = MaterialTheme.colors.error) } } }, confirmButton = { Button(enabled = !busy, onClick = { controller.submit(current.title, { confirmation = null }, action = current.action) }) { Text("确认") } }, dismissButton = { TextButton(enabled = !busy, onClick = { confirmation = null }) { Text("取消") } }) }
     editTags?.let { ids ->
         var search by remember { mutableStateOf("") }
         AppDialog("编辑 ${ids.size} 个资源的标签", { if (!busy) editTags = null }) {
@@ -267,19 +279,18 @@ private data class Confirmation(val title: String, val body: String, val action:
             Text("添加或移除立即保存；批量操作只修改指定标签。", style = MaterialTheme.typography.caption)
             LazyColumn(Modifier.heightIn(max = 350.dp)) {
                 items(data.tags.filter { it.matches(search) }, key = { it.id }) { tag ->
-                    val count = ids.count { tag.id in data.links[it].orEmpty() }
+                    val count = controller.editCounts[tag.id] ?: 0
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("${tag.name} ($count/${ids.size})", modifier = Modifier.weight(1f))
-                        TextButton(enabled = !busy && count < ids.size, onClick = { controller.submit("添加标签") { it.setTag(ids, tag.id, true) } }) { Text("添加") }
-                        TextButton(enabled = !busy && count > 0, onClick = { controller.submit("移除标签") { it.setTag(ids, tag.id, false) } }) { Text("移除") }
+                        TextButton(enabled = !busy && !controller.editLoading && count < ids.size, onClick = { controller.submit("添加标签") { it.setTag(ids, tag.id, true) } }) { Text("添加") }
+                        TextButton(enabled = !busy && !controller.editLoading && count > 0, onClick = { controller.submit("移除标签") { it.setTag(ids, tag.id, false) } }) { Text("移除") }
                     }
                 }
             }
             controller.error?.let { Text(it, color = MaterialTheme.colors.error) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(enabled = !busy && search.isNotBlank(), onClick = { controller.submit("创建并添加标签") { lib ->
-                    val existing = lib.snapshot().tags.find { tag -> (listOf(tag.name) + tag.aliases).any { normalizedName(it) == normalizedName(search) } }
-                    lib.setTag(ids, existing?.id ?: lib.createTag(search), true)
+                    lib.setTag(ids, lib.findTag(search) ?: lib.createTag(search), true)
                 } }) { Text("创建 / 使用并添加") }
                 Button(enabled = !busy, onClick = { editTags = null }) { Text("完成") }
             }

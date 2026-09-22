@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.resourcetagger"
-version = "1.0.0"
+version = "1.1.0"
 
 kotlin {
     jvmToolchain(21)
@@ -22,6 +22,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    environment("LOCALAPPDATA", layout.buildDirectory.dir("test-local-data").get().asFile.absolutePath)
 }
 
 compose.desktop {
@@ -31,7 +32,7 @@ compose.desktop {
         nativeDistributions {
             modules("java.sql", "jdk.unsupported")
             packageName = "ResourceTagger"
-            packageVersion = "1.0.0"
+            packageVersion = "1.1.0"
             vendor = "Alice-tower"
         }
     }

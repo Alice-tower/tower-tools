@@ -7,25 +7,26 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 class Library(private val db: Database, private val fs: ResourceFileSystem = LocalFileSystem()) : AutoCloseable {
+    private val reads = LibraryQueries(db)
     private val scanning = ConcurrentHashMap.newKeySet<String>()
     private fun id() = UUID.randomUUID().toString()
     private fun now() = Instant.now().toString()
-    @Synchronized fun snapshot(): Snapshot {
-        val roots = db.query("SELECT * FROM roots") { Root(it.getString("id"), it.getString("path"), it.getString("display_name"), it.getString("availability_status"), it.getString("last_scan_at"), it.getString("last_successful_scan_at"), it.getString("last_scan_error")) }
-        val resources = db.query("SELECT * FROM resources") { Resource(it.getString("id"), it.getString("root_id"), it.getString("relative_path"), Kind.valueOf(it.getString("kind")), it.getString("display_name"), Status.valueOf(it.getString("status")), it.getString("created_at"), it.getString("last_seen_at")) }
-        val names = db.query("SELECT tag_id,name,name_kind FROM tag_names ORDER BY name") { Triple(it.getString(1), it.getString(2), it.getString(3)) }
-        val tags = names.filter { it.third == "canonical" }.map { canonical -> Tag(canonical.first, canonical.second, names.filter { it.first == canonical.first && it.third == "alias" }.map { it.second }) }
-        val links = db.query("SELECT resource_id,tag_id FROM resource_tags") { it.getString(1) to it.getString(2) }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
-        val reviews = db.query("SELECT * FROM review_items WHERE state='Pending'") { Review(it.getString("id"), it.getString("resource_id"), Reason.valueOf(it.getString("reason")), it.getString("observed_kind")?.let(Kind::valueOf)) }
-        return Snapshot(roots, resources, tags, links, reviews)
-    }
+    // Full snapshots remain available for integrity/export tests, never used by the desktop refresh path.
+    @Synchronized fun snapshot(): Snapshot = reads.snapshot()
+    @Synchronized fun overview(): Snapshot = reads.overview()
+    @Synchronized fun queryPage(query: Query, offset: Int = 0, pageSize: Int = 200): ResourcePage = reads.page(query, offset, pageSize)
+    @Synchronized fun matchingIds(query: Query): Set<String> = reads.matchingIds(query)
+    @Synchronized fun retainedSelection(query: Query, candidates: Set<String>): Set<String> = reads.matchingIds(query, candidates)
+    @Synchronized fun detail(id: String): Snapshot = reads.records(reads.resources("id=?", id))
+    @Synchronized fun selectionCounts(ids: Set<String>): Map<String, Int> = reads.selectionCounts(ids)
+    @Synchronized fun findTag(name: String): String? = db.query("SELECT tag_id FROM tag_names WHERE normalized_name=?", normalizedName(name)) { it.getString(1) }.singleOrNull()
     private fun checkRootAvailableForEdit(rootId: String) { require(rootId !in scanning) { "该 Root 正在扫描，请等待完成。" } }
     @Synchronized fun saveRoot(rootId: String?, pathText: String, displayName: String): String {
         rootId?.let(::checkRootAvailableForEdit)
         val path = PathsPolicy.root(pathText)
         val key = PathsPolicy.key(path)
         require(displayName.trim().isNotEmpty()) { "Root 名称不能为空。" }
-        require(snapshot().roots.none { it.id != rootId && PathsPolicy.overlaps(key, PathsPolicy.key(Path.of(it.path))) }) { "Root 与已有目录重复或相互嵌套。" }
+        require(reads.roots().none { it.id != rootId && PathsPolicy.overlaps(key, PathsPolicy.key(Path.of(it.path))) }) { "Root 与已有目录重复或相互嵌套。" }
         val newId = rootId ?: id()
         if (rootId == null) db.execute("INSERT INTO roots(id,path,normalized_path,display_name,created_at) VALUES(?,?,?,?,?)", newId, path.toString(), key, displayName.trim(), now())
         else db.execute("UPDATE roots SET path=?,normalized_path=?,display_name=?,availability_status='未扫描',last_scan_error=NULL WHERE id=?", path.toString(), key, displayName.trim(), rootId)
@@ -47,20 +48,22 @@ class Library(private val db: Database, private val fs: ResourceFileSystem = Loc
     fun scan(rootId: String) {
         val root = synchronized(this) {
             require(scanning.add(rootId)) { "该 Root 已在扫描。" }
-            try { snapshot().roots.single { it.id == rootId } } catch (e: Throwable) { scanning.remove(rootId); throw e }
+            try { reads.roots().single { it.id == rootId } } catch (e: Throwable) { scanning.remove(rootId); throw e }
         }
         try {
             val found = fs.scan(Path.of(root.path))
             require(found.map { PathsPolicy.childKey(it.name) }.distinct().size == found.size) { "发现重复路径，扫描已取消。" }
             synchronized(this) {
                 db.transaction {
-                    val existing = snapshot().resources.filter { it.rootId == rootId }.associateBy { PathsPolicy.childKey(it.relativePath) }
+                    val existing = reads.resources("root_id=?", rootId).associateBy { PathsPolicy.childKey(it.relativePath) }
+                    val typeChanged = reads.reviews("reason='TypeChanged' AND resource_id IN (SELECT id FROM resources WHERE root_id=?)", rootId).mapTo(HashSet()) { it.resourceId }
                     val seen = found.associateBy { PathsPolicy.childKey(it.name) }
                     found.forEach { item ->
                         val old = existing[PathsPolicy.childKey(item.name)]
                         if (old == null) {
                             val newId = id()
-                            db.execute("INSERT INTO resources VALUES(?,?,?,?,?,?,?,?,?)", newId, rootId, item.name, PathsPolicy.childKey(item.name), item.kind.name, item.name, Status.Active.name, now(), now())
+                            val searchKey = normalizedName(item.name)
+                            db.execute("INSERT INTO resources(id,root_id,relative_path,normalized_relative_path,kind,display_name,status,created_at,last_seen_at,display_key,path_key) VALUES(?,?,?,?,?,?,?,?,?,?,?)", newId, rootId, item.name, PathsPolicy.childKey(item.name), item.kind.name, item.name, Status.Active.name, now(), now(), searchKey, searchKey)
                             review(newId, Reason.New)
                         } else if (old.status != Status.Ignored) {
                             if (old.kind != item.kind) {
@@ -74,7 +77,7 @@ class Library(private val db: Database, private val fs: ResourceFileSystem = Loc
                         }
                     }
                     existing.values.filter { PathsPolicy.childKey(it.relativePath) !in seen && it.status != Status.Ignored }.forEach { old ->
-                        val typePending = snapshot().reviews.any { it.resourceId == old.id && it.reason == Reason.TypeChanged }
+                        val typePending = old.id in typeChanged
                         if (old.status != Status.Missing || typePending) {
                             db.execute("UPDATE resources SET status='Missing' WHERE id=?", old.id)
                             resolve(old.id); review(old.id, Reason.Missing)
@@ -89,14 +92,14 @@ class Library(private val db: Database, private val fs: ResourceFileSystem = Loc
         } finally { scanning.remove(rootId) }
     }
     @Synchronized fun acknowledge(resourceId: String) {
-        require(snapshot().reviews.none { it.resourceId == resourceId && it.reason == Reason.TypeChanged }) { "请先明确确认类型变化，或重新定位。" }
+        require(reads.reviews("resource_id=? AND reason='TypeChanged'", resourceId).isEmpty()) { "请先明确确认类型变化，或重新定位。" }
         resolve(resourceId)
     }
     @Synchronized fun ignore(resourceId: String) = db.transaction {
         db.execute("UPDATE resources SET status='Ignored' WHERE id=?", resourceId); resolve(resourceId)
     }
     @Synchronized fun unignore(resourceId: String) = db.transaction {
-        val data = snapshot(); val resource = data.resources.single { it.id == resourceId }; val root = data.roots.single { it.id == resource.rootId }
+        val resource = reads.resources("id=?", resourceId).single(); val root = reads.roots().single { it.id == resource.rootId }
         require(java.nio.file.Files.isDirectory(Path.of(root.path))) { "Root 不可访问，无法检查资源，请稍后重试。" }
         val kind = try { fs.inspect(PathsPolicy.actual(root, resource)) } catch (_: NoSuchFileException) { null }
         val status = if (kind == resource.kind) Status.Active else Status.Missing
@@ -105,8 +108,8 @@ class Library(private val db: Database, private val fs: ResourceFileSystem = Loc
         else if (kind == null) review(resourceId, Reason.Missing)
     }
     @Synchronized fun acceptType(resourceId: String) = db.transaction {
-        val data = snapshot(); val resource = data.resources.single { it.id == resourceId }; val root = data.roots.single { it.id == resource.rootId }
-        val pending = data.reviews.single { it.resourceId == resourceId && it.reason == Reason.TypeChanged }
+        val resource = reads.resources("id=?", resourceId).single(); val root = reads.roots().single { it.id == resource.rootId }
+        val pending = reads.reviews("resource_id=? AND reason='TypeChanged'", resourceId).single()
         val actual = fs.inspect(PathsPolicy.actual(root, resource))
         require(actual != null && actual == pending.observedKind) { "目标再次变化，请重新扫描后确认。" }
         db.execute("UPDATE resources SET kind=?,status='Active',last_seen_at=? WHERE id=?", actual.name, now(), resourceId)
@@ -115,15 +118,16 @@ class Library(private val db: Database, private val fs: ResourceFileSystem = Loc
     @Synchronized fun removeResource(resourceId: String) { db.execute("DELETE FROM resources WHERE id=?", resourceId) }
     @Synchronized fun relocate(resourceId: String, targetText: String, allowMerge: Boolean = false) = db.transaction {
         require(targetText.isNotBlank()) { "请选择或输入目标完整路径。" }
-        val data = snapshot(); val resource = data.resources.single { it.id == resourceId }
+        val resource = reads.resources("id=?", resourceId).single()
         val target = Path.of(targetText.trim()).toAbsolutePath().normalize()
-        val root = data.roots.singleOrNull { PathsPolicy.key(Path.of(it.path)) == target.parent?.let(PathsPolicy::key) } ?: error("目标必须是已配置 Root 的直接子项。")
+        val root = reads.roots().singleOrNull { PathsPolicy.key(Path.of(it.path)) == target.parent?.let(PathsPolicy::key) } ?: error("目标必须是已配置 Root 的直接子项。")
         checkRootAvailableForEdit(resource.rootId); checkRootAvailableForEdit(root.id)
         require(fs.inspect(target) == resource.kind) { "目标类型必须与原资源一致，且不是隐藏、系统或链接对象。" }
         val name = target.fileName.toString(); val key = PathsPolicy.childKey(name)
-        val collision = data.resources.singleOrNull { it.rootId == root.id && PathsPolicy.childKey(it.relativePath) == key && it.id != resourceId }
+        val collision = reads.resources("root_id=? AND normalized_relative_path=? AND id<>?", root.id, key, resourceId).singleOrNull()
         if (collision != null) {
-            require(data.links[collision.id].orEmpty().isEmpty() && collision.status == Status.Active && data.reviews.any { it.resourceId == collision.id && it.reason == Reason.New }) { "目标已经独立管理或带有标签，不能合并。" }
+            val targetData = detail(collision.id)
+            require(targetData.links[collision.id].orEmpty().isEmpty() && collision.status == Status.Active && targetData.reviews.any { it.reason == Reason.New }) { "目标已经独立管理或带有标签，不能合并。" }
             require(allowMerge) { "目标是无标签的新发现记录；请勾选允许合并，以保留旧记录的 ID 和标签。" }
             db.execute("DELETE FROM resources WHERE id=?", collision.id)
         }
