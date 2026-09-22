@@ -30,6 +30,28 @@ class ProxyEnvironmentService(
 
     fun clear(): ProxyEnvironment = changeAll(store::delete)
 
+    fun applyPreset(name: String): ProxyEnvironment {
+        require(name in ProxyVariables.names) { "不支持的代理环境变量：$name" }
+        val configured = presets()
+        require(configured.isConfigured()) { "请先设置 HTTP_PROXY、HTTPS_PROXY 和 ALL_PROXY 预设" }
+        return changeOne(name) { store.write(name, configured.asMap().getValue(name)) }
+    }
+
+    fun clear(name: String): ProxyEnvironment = changeOne(name) { store.delete(name) }
+
+    private fun changeOne(name: String, change: () -> Unit): ProxyEnvironment {
+        require(name in ProxyVariables.names) { "不支持的代理环境变量：$name" }
+        val previous = store.read(name)
+        try {
+            change()
+            return read()
+        } catch (failure: Throwable) {
+            runCatching { restore(name, previous) }
+                .onFailure { rollbackFailure -> failure.addSuppressed(rollbackFailure) }
+            throw failure
+        }
+    }
+
     private fun changeAll(change: (String) -> Unit): ProxyEnvironment {
         val previous = read()
         try {

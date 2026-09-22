@@ -1,12 +1,15 @@
 package dev.towertools.proxyenvmanager
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -25,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -65,8 +69,8 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
@@ -86,25 +90,33 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
         val values = currentValues(environment)
         val presetValues = presets?.asMap().orEmpty()
         Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    Text("变量", modifier = Modifier.width(130.dp), style = MaterialTheme.typography.caption)
+                    Text("变量", modifier = Modifier.width(110.dp), style = MaterialTheme.typography.caption)
                     Text("当前值", modifier = Modifier.weight(1f), style = MaterialTheme.typography.caption)
-                    Text("预设值（修改请点右上角）", modifier = Modifier.weight(1f), style = MaterialTheme.typography.caption)
+                    Text("预设值", modifier = Modifier.weight(1f), style = MaterialTheme.typography.caption)
+                    Text("单项操作", modifier = Modifier.width(180.dp), style = MaterialTheme.typography.caption)
                 }
                 ProxyVariables.names.forEach { name ->
-                    Divider(modifier = Modifier.padding(vertical = 6.dp))
-                    ProxyVariableRow(name, values[name], presetValues[name], presets?.isConfigured() == true)
+                    Divider(modifier = Modifier.padding(vertical = 2.dp))
+                    ProxyVariableRow(
+                        name, values[name], presetValues[name], presets?.isConfigured() == true,
+                        onApplyPreset = {
+                            execute("已为 $name 使用预设。请重启需要使用新配置的程序。") { service.applyPreset(name) }
+                        },
+                        onDelete = {
+                            execute("已删除 $name。请重启需要使用新配置的程序。") { service.clear(name) }
+                        },
+                    )
                 }
             }
         }
 
-        Spacer(Modifier.weight(1f))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button(enabled = presets?.isConfigured() == true, onClick = {
                 execute("已应用预设。请重启需要使用新配置的程序。", service::setLocalProxy)
             }) {
-                Text("应用预设")
+                Text("全部应用预设")
             }
             OutlinedButton(onClick = { execute("已刷新", service::read) }) {
                 Text("刷新")
@@ -117,7 +129,7 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
                     contentColor = MaterialTheme.colors.onError,
                 ),
             ) {
-                Text("删除变量")
+                Text("全部删除")
             }
         }
 
@@ -137,7 +149,7 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
                     .fold(onSuccess = {
                         presets = it
                         showSettings = false
-                        message = "预设已保存；点击“应用预设”后才会修改环境变量。"
+                        message = "预设已保存；点击单项“使用预设”或“全部应用预设”后才会修改环境变量。"
                         isError = false
                         null
                     }, onFailure = {
@@ -187,10 +199,17 @@ private fun PresetSettingsDialog(
 }
 
 @Composable
-private fun ProxyVariableRow(name: String, value: String?, preset: String?, presetsConfigured: Boolean) {
+private fun ProxyVariableRow(
+    name: String,
+    value: String?,
+    preset: String?,
+    presetsConfigured: Boolean,
+    onApplyPreset: () -> Unit,
+    onDelete: () -> Unit,
+) {
     val comparison = preset?.let { comparePreset(name, value, it, presetsConfigured) }
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.width(130.dp)) {
+    Row(modifier = Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.width(110.dp)) {
             Text(name, style = MaterialTheme.typography.subtitle2)
             if (comparison != null) {
                 Text(
@@ -212,6 +231,9 @@ private fun ProxyVariableRow(name: String, value: String?, preset: String?, pres
             SelectionContainer {
                 Text(
                     value?.takeUnless(String::isEmpty) ?: if (value == null) "未设置" else "（空字符串）",
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    maxLines = 1,
+                    softWrap = false,
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.body2,
                 )
@@ -226,11 +248,21 @@ private fun ProxyVariableRow(name: String, value: String?, preset: String?, pres
                 Text(
                     preset?.takeUnless(String::isEmpty) ?: if (preset == null) "读取失败"
                         else if (comparison == PresetComparison.UNCONFIGURED) "未配置" else "（空字符串）",
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    maxLines = 1,
+                    softWrap = false,
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                 )
             }
+        }
+        Row(modifier = Modifier.width(180.dp).padding(start = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(enabled = presetsConfigured, onClick = onApplyPreset) { Text("使用预设") }
+            OutlinedButton(
+                onClick = onDelete,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colors.error),
+            ) { Text("删除") }
         }
     }
 }

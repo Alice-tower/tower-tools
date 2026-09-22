@@ -24,7 +24,7 @@ fun main() {
     val service = ProxyEnvironmentService()
 
     application {
-        val state = rememberWindowState(width = 700.dp, height = 480.dp)
+        val state = rememberWindowState(width = 700.dp, height = 450.dp)
 
         Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName) {
             DisposableEffect(window) {

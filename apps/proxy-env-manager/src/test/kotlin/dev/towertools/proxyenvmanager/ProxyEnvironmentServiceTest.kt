@@ -8,6 +8,56 @@ import java.nio.file.Files
 
 class ProxyEnvironmentServiceTest {
     @Test
+    fun individualActionsLeaveOtherVariablesUntouched() {
+        val configured = ProxyPresets("http://new-http", "http://new-https", "socks5://new-all", "")
+        for (name in ProxyVariables.names) {
+            val original = ProxyVariables.names.associateWith { "old-$it" }
+            val store = FakeStore(*original.toList().toTypedArray())
+            val service = ProxyEnvironmentService(store, FakePresetStore(configured))
+
+            service.applyPreset(name)
+            assertEquals(original + (name to configured.asMap().getValue(name)), store.values)
+            assertEquals(listOf(name), store.mutations)
+
+            store.mutations.clear()
+            service.clear(name)
+            assertEquals(original - name, store.values)
+            assertEquals(listOf(name), store.mutations)
+        }
+    }
+
+    @Test
+    fun singleVariableFailureRestoresOnlyItsOriginalValue() {
+        for (deleting in listOf(false, true)) {
+            for (originalValue in listOf(null, "", "http://old")) {
+                val original = mutableMapOf(ProxyVariables.HTTPS_PROXY to "http://keep")
+                originalValue?.let { original[ProxyVariables.HTTP_PROXY] = it }
+                val store = FakeStore(*original.toList().toTypedArray()).apply {
+                    failingName = ProxyVariables.HTTP_PROXY
+                    failAfterMutation = true
+                }
+                val service = ProxyEnvironmentService(store, FakePresetStore(ProxyPresets("http://new", "http://new", "socks5://new")))
+
+                assertFailsWith<IllegalStateException> {
+                    if (deleting) service.clear(ProxyVariables.HTTP_PROXY) else service.applyPreset(ProxyVariables.HTTP_PROXY)
+                }
+                assertEquals(original, store.values)
+                assertEquals(listOf(ProxyVariables.HTTP_PROXY, ProxyVariables.HTTP_PROXY), store.mutations)
+            }
+        }
+    }
+
+    @Test
+    fun invalidSingleActionsDoNotWriteAnything() {
+        val store = FakeStore(ProxyVariables.HTTP_PROXY to "http://keep")
+        val service = ProxyEnvironmentService(store, FakePresetStore())
+        assertFailsWith<IllegalArgumentException> { service.applyPreset(ProxyVariables.HTTP_PROXY) }
+        assertFailsWith<IllegalArgumentException> { service.applyPreset("PATH") }
+        assertFailsWith<IllegalArgumentException> { service.clear("PATH") }
+        assertEquals(emptyList(), store.mutations)
+    }
+
+    @Test
     fun noProxyDisplayTreatsAbsentAndEmptyAsEquivalentAfterConfiguration() {
         assertEquals(PresetComparison.UNCONFIGURED, comparePreset(ProxyVariables.NO_PROXY, null, "", false))
         assertEquals(PresetComparison.MATCH, comparePreset(ProxyVariables.NO_PROXY, null, "", true))
@@ -119,11 +169,15 @@ class ProxyEnvironmentServiceTest {
     private class FakeStore(vararg initial: Pair<String, String>) : UserEnvironmentStore {
         val values = initial.toMap().toMutableMap()
         var failingName: String? = null
+        var failAfterMutation = false
+        val mutations = mutableListOf<String>()
         private var failureConsumed = false
 
         override fun read(name: String): String? = values[name]
 
         override fun write(name: String, value: String) {
+            mutations.add(name)
+            if (failAfterMutation) values[name] = value
             if (name == failingName && !failureConsumed) {
                 failureConsumed = true
                 throw IllegalStateException("simulated write failure")
@@ -132,7 +186,12 @@ class ProxyEnvironmentServiceTest {
         }
 
         override fun delete(name: String) {
+            mutations.add(name)
             values.remove(name)
+            if (name == failingName && !failureConsumed) {
+                failureConsumed = true
+                throw IllegalStateException("simulated delete failure")
+            }
         }
     }
 }
