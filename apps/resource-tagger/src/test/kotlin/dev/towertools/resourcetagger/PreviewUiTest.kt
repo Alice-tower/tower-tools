@@ -68,12 +68,12 @@ class PreviewUiTest {
     }
 
     @Test fun `host layouts tabs and actions retain resource management and selection across pages`() {
-        val rootPath = folder.newFolder("preview").toPath()
-        Files.writeString(rootPath.resolve("entry-0000"), "preview content")
+        val rootPath = folder.newFolder("preview").toPath(); Files.createDirectory(rootPath.resolve("bucket-000001"))
+        Files.writeString(rootPath.resolve("bucket-000001/entry-0000"), "preview content")
         val database = folder.root.toPath().resolve("library.sqlite")
         val fs = object : ResourceFileSystem {
             override fun inspect(path: java.nio.file.Path) = Kind.File
-            override fun scan(path: java.nio.file.Path) = (0 until 450).map { Found("entry-%04d".format(it), Kind.File) }
+            override fun scan(path: java.nio.file.Path) = (0 until 450).map { Found("bucket-000001/" + "entry-%04d".format(it), Kind.File) }
         }
         Library(Database(database), fs).use { lib -> lib.scan(lib.saveRoot(null, rootPath.toString(), "Root")); lib.createTag("test-tag") }
         val loads = AtomicInteger()
@@ -141,6 +141,6 @@ class PreviewUiTest {
         rule.onNodeWithText("列表", substring = false).performClick(); idle()
         rule.onNodeWithTag("resource-list").assertExists()
         rule.onNodeWithText("搜索资源名称或相对路径").assertTextContains("entry")
-        assertEquals("preview content", Files.readString(rootPath.resolve("entry-0000")))
+        assertEquals("preview content", Files.readString(rootPath.resolve("bucket-000001/entry-0000")))
     }
 }

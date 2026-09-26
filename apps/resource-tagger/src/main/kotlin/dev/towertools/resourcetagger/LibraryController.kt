@@ -9,7 +9,9 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
-class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.dataDirectory.resolve("library.sqlite")) : AutoCloseable {
+class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.dataDirectory.resolve("library.sqlite"), private val fileSystem: ResourceFileSystem = LocalFileSystem()) : AutoCloseable {
+    var scanControl by mutableStateOf<ScanControl?>(null); private set
+    private val scanner = java.util.concurrent.Executors.newSingleThreadExecutor { task -> Thread(task, "resource-scan").apply { isDaemon = true } }
     var data by mutableStateOf(Snapshot()); private set
     var selected by mutableStateOf<Set<String>>(emptySet())
     var previewRevision by mutableStateOf(0L); private set
@@ -40,7 +42,7 @@ class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.
     init {
         executor.execute {
             try {
-                library = Library(Database(databasePath))
+                library = Library(Database(databasePath), fileSystem)
                 metadata = library!!.overview()
                 loadPage(generation.get())
                 ui { busy = null }
@@ -100,6 +102,31 @@ class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.
         var ids = emptySet<String>()
         submit("选择全部匹配资源", { if (query == requested) onResult(ids) }, refresh = false) { ids = it.matchingIds(requested) }
     }
+    fun scan(rootId: String) {
+        if (busy != null || closed) return
+        val control = ScanControl()
+        scanControl = control; busy = "正在扫描"; error = null
+        // Dispatch through the library queue so initialization and earlier writes finish first.
+        executor.execute {
+            val current = library
+            scanner.execute {
+                var outcome = "扫描完成"
+                try { (current ?: error("资料库未能打开，请检查错误并重启。")).scan(rootId, control) }
+                catch (e: java.util.concurrent.CancellationException) { outcome = "扫描已取消，原有数据已保留。" }
+                catch (e: Exception) { outcome = "扫描失败，原有数据已保留。"; failure(e) }
+                executor.execute {
+                    if (!closed) {
+                        try {
+                            metadata = current?.overview() ?: Snapshot()
+                            loadPage(generation.get(), true)
+                            loadFocus(focusGeneration.get()); loadEditCounts(editGeneration.get())
+                        } catch (e: Exception) { failure(e); ui { querying = false } }
+                        ui { scanControl = null; busy = null; message = outcome; previewRevision++ }
+                    }
+                }
+            }
+        }
+    }
     fun submit(label: String, onSuccess: () -> Unit = {}, refresh: Boolean = true, action: (Library) -> Unit) {
         if (busy != null || closed) return
         busy = label; error = null
@@ -119,5 +146,16 @@ class LibraryController(private val databasePath: java.nio.file.Path = AppPaths.
         AppLog.logger.log(java.util.logging.Level.WARNING, "Library operation failed", e)
         ui { error = e.message ?: e.javaClass.simpleName }
     }
-    override fun close() { closed = true; scheduled?.cancel(false); executor.execute { library?.close() }; executor.shutdown() }
+    override fun close() {
+        if (closed) return
+        closed = true; scanControl?.cancel(); scheduled?.cancel(false)
+        // Enqueue cleanup after scan dispatch, then after the scanner releases the database.
+        executor.execute {
+            scanner.execute {
+                executor.execute { library?.close() }
+                executor.shutdown()
+            }
+            scanner.shutdown()
+        }
+    }
 }

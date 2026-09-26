@@ -20,7 +20,7 @@ class LibraryUiTest {
         val database = folder.root.toPath().resolve("paged.sqlite")
         val fs = object : ResourceFileSystem {
             override fun inspect(path: java.nio.file.Path) = Kind.File
-            override fun scan(path: java.nio.file.Path) = (0 until 450).map { Found("entry-%04d".format(it), Kind.File) }
+            override fun scan(path: java.nio.file.Path) = (0 until 450).map { Found("bucket-000001/" + "entry-%04d".format(it), Kind.File) }
         }
         Library(Database(database), fs).use { lib -> val root = lib.saveRoot(null, path.toString(), "Paged"); lib.scan(root); lib.createTag("跨页标签") }
         val controller = LibraryController(database)
@@ -49,8 +49,8 @@ class LibraryUiTest {
         assertEquals(null, controller.error)
     }
     @Test fun `GUI root scan review tag alias filter and ignore workflow`() {
-        val path = folder.newFolder("资料 Root").toPath()
-        Files.createDirectory(path.resolve("目录 A")); Files.writeString(path.resolve("文件 B.txt"), "B")
+        val path = folder.newFolder("资料 Root").toPath(); Files.createDirectory(path.resolve("bucket-000001"))
+        Files.createDirectory(path.resolve("bucket-000001/目录 A")); Files.writeString(path.resolve("bucket-000001/文件 B.txt"), "B")
         val controller = LibraryController(folder.root.toPath().resolve("data/library.sqlite"))
         rule.setContent { MaterialTheme { Surface { LibraryApp(null, controller) } } }
         fun idle() { rule.waitForIdle(); rule.waitUntil(10000) { controller.busy == null && !controller.loading }; rule.waitForIdle() }
@@ -89,14 +89,14 @@ class LibraryUiTest {
         rule.onNodeWithText("忽略", substring = false).performScrollTo().performClick(); idle()
         rule.onNodeWithText("▤ 文件 B.txt").assertDoesNotExist()
         assertTrue(controller.focusData.resources.any { it.name == "文件 B.txt" && it.status == Status.Ignored })
-        assertTrue(Files.exists(path.resolve("文件 B.txt")))
+        assertTrue(Files.exists(path.resolve("bucket-000001/文件 B.txt")))
         assertEquals(null, controller.error)
     }
 
     @Test fun `GUI batch tags relocation confirmation and deletion boundaries`() {
-        val path = folder.newFolder("资源").toPath()
-        val old = Files.writeString(path.resolve("old.txt"), "old")
-        Files.writeString(path.resolve("second.txt"), "second")
+        val path = folder.newFolder("资源").toPath(); Files.createDirectory(path.resolve("bucket-000001"))
+        val old = Files.writeString(path.resolve("bucket-000001/old.txt"), "old")
+        Files.writeString(path.resolve("bucket-000001/second.txt"), "second")
         val database = folder.root.toPath().resolve("data/library.sqlite")
         Library(Database(database)).use { lib -> val root = lib.saveRoot(null, path.toString(), "资源"); lib.scan(root); lib.createTag("主题") }
         val controller = LibraryController(database)
@@ -110,7 +110,7 @@ class LibraryUiTest {
         rule.onNodeWithText("完成", substring = false).performClick()
         assertEquals(2, controller.data.links.size)
         val oldId = controller.data.resources.single { it.name == "old.txt" }.id
-        val moved = Files.move(old, path.resolve("renamed.txt"))
+        val moved = Files.move(old, path.resolve("bucket-000001/renamed.txt"))
         rule.onNodeWithText("Root 管理").performClick(); rule.onNodeWithText("扫描", substring = false).performClick(); idle()
         rule.onNode(hasText("资源") and hasClickAction()).performClick(); rule.onNodeWithText("▤ old.txt").performClick(); idle()
         rule.onNodeWithText("重新定位", substring = false).performScrollTo().performClick()
@@ -128,6 +128,6 @@ class LibraryUiTest {
         rule.onNodeWithText("Root 管理").performClick(); rule.onNodeWithText("移除", substring = false).performClick()
         rule.onNodeWithText("确认", substring = false).performClick(); idle()
         assertTrue(controller.data.roots.isEmpty()); assertTrue(controller.data.resources.isEmpty())
-        assertEquals("old", Files.readString(moved)); assertEquals("second", Files.readString(path.resolve("second.txt")))
+        assertEquals("old", Files.readString(moved)); assertEquals("second", Files.readString(path.resolve("bucket-000001/second.txt")))
     }
 }

@@ -59,10 +59,10 @@ private data class Confirmation(val title: String, val body: String, val action:
         )
     }
     fun rootForm(root: Root? = null) {
-        form = Form(if (root == null) "添加 Root" else "重新定位 Root", listOf("显示名称", "目录路径"), listOf(root?.name ?: "", root?.path ?: ""), "只扫描直接子项。Root 不得重复、嵌套或为整块磁盘。重新定位保留资源 ID 和标签，完成后请扫描。", browse = 1) { lib, values, _ -> lib.saveRoot(root?.id, values[1], values[0]) }
+        form = Form(if (root == null) "添加 Root" else "重新定位 Root", listOf("显示名称", "目录路径"), listOf(root?.name ?: "", root?.path ?: ""), "只扫描 bucket-000001 等目录内的直接子项。Root 不得重复、嵌套或为整块磁盘。重新定位保留资源 ID 和标签，完成后请扫描。", browse = 1) { lib, values, _ -> lib.saveRoot(root?.id, values[1], values[0]) }
     }
     fun relocation(resource: Resource) {
-        form = Form("重新定位资源", listOf("目标完整路径"), listOf(""), "目标必须是已配置 Root 的直接子项，且类型一致。合并仅适用于无标签、尚未确认的新发现记录。", browse = 0, directoriesOnly = resource.kind == Kind.Directory, mergeOption = true) { lib, values, merge -> lib.relocate(resource.id, values[0], merge) }
+        form = Form("重新定位资源", listOf("目标完整路径"), listOf(""), "目标必须是已配置 Root 下 Bucket 的直接子项，且类型一致。合并仅适用于无标签、尚未确认的新发现记录。", browse = 0, directoriesOnly = resource.kind == Kind.Directory, mergeOption = true) { lib, values, merge -> lib.relocate(resource.id, values[0], merge) }
     }
     fun removeResource(resource: Resource) {
         confirmation = Confirmation("仅从数据库移除", "移除「${resource.name}」的记录、标签关联和待处理项，不删除磁盘内容。仍存在的对象下次扫描会重新发现；长期隐藏请使用“忽略”。") { it.removeResource(resource.id) }
@@ -85,24 +85,25 @@ private data class Confirmation(val title: String, val body: String, val action:
             }
         }
         Divider()
+        controller.scanControl?.let { ScanStatus(it) }
         when (page) {
             "Root 管理" -> Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("扫描入口", style = MaterialTheme.typography.h6, modifier = Modifier.weight(1f))
                     Button(onClick = { rootForm() }, enabled = !busy) { Text("添加 Root") }
                 }
-                Text("仅管理直接文件和目录；不递归、不改变磁盘内容。", modifier = Modifier.padding(vertical = 8.dp))
+                Text("仅管理 bucket-000001 等目录内的直接子项；不深入资源目录、不改变磁盘内容。", modifier = Modifier.padding(vertical = 8.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(data.roots, key = { it.id }) { root ->
                         Card(Modifier.fillMaxWidth(), elevation = 2.dp) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(root.name, fontWeight = FontWeight.Bold)
                                 SelectionContainer { Text(root.path) }
-                                Text("${root.availability} · 最近成功：${root.lastSuccess ?: "尚未扫描"}", style = MaterialTheme.typography.caption)
+                                Text("上次扫描状态：${root.availability} · 最近成功：${root.lastSuccess ?: "尚未扫描"}", style = MaterialTheme.typography.caption)
                                 root.lastScan?.let { Text("最近尝试：$it", style = MaterialTheme.typography.caption) }
                                 root.error?.let { Text(it, color = MaterialTheme.colors.error) }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(enabled = !busy, onClick = { controller.submit("扫描 ${root.name}") { it.scan(root.id) } }) { Text("扫描") }
+                                    Button(enabled = !busy, onClick = { controller.scan(root.id) }) { Text("扫描") }
                                     OutlinedButton(enabled = !busy, onClick = { form = Form("编辑 Root 名称", listOf("名称"), listOf(root.name)) { lib, values, _ -> lib.renameRoot(root.id, values[0]) } }) { Text("改名") }
                                     OutlinedButton(enabled = !busy, onClick = { rootForm(root) }) { Text("重新定位") }
                                     TextButton(enabled = !busy, onClick = { confirmation = Confirmation("移除 Root", "将移除「${root.name}」及其 ${data.rootCounts[root.id] ?: 0} 条资源记录、关联和待处理项。保留所有标签定义及磁盘内容。") { it.removeRoot(root.id) } }) { Text("移除") }
@@ -144,7 +145,9 @@ private data class Confirmation(val title: String, val body: String, val action:
                     OutlinedButton(onClick = { query = Query(reviewOnly = true) }, modifier = Modifier.fillMaxWidth()) { Text("${if (query.reviewOnly) "● " else ""}待处理 · ${data.pendingCount}") }
                     Choice("Root", listOf(null to "全部 Root") + data.roots.map { it.id to it.name }, query.rootId) { query = query.copy(rootId = it) }
                     Button(onClick = { rootForm() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("添加 Root") }
-                    query.rootId?.let { rootId -> OutlinedButton(enabled = !busy, onClick = { controller.submit("扫描 Root") { it.scan(rootId) } }, modifier = Modifier.fillMaxWidth()) { Text("扫描当前 Root") } }
+                    query.rootId?.let { rootId -> OutlinedButton(enabled = !busy, onClick = { controller.scan(rootId) }, modifier = Modifier.fillMaxWidth()) { Text("扫描当前 Root") } }
+                    Text("状态来自最近扫描，不代表 NAS 当前在线。", style = MaterialTheme.typography.caption)
+                    query.rootId?.let { id -> rootsById[id]?.let { Text("最近成功：${it.lastSuccess ?: "尚未扫描"}", style = MaterialTheme.typography.caption) } }
                     Choice("类型", listOf(null to "全部类型") + Kind.entries.map { it to it.title }, query.kind) { query = query.copy(kind = it) }
                     Choice("状态", listOf(null to "日常结果（隐藏忽略）") + Status.entries.map { it to it.title }, query.status) { query = query.copy(status = it) }
                     Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(query.untagged, { query = query.copy(untagged = it) }); Text("仅无标签") }
@@ -179,12 +182,12 @@ private data class Confirmation(val title: String, val body: String, val action:
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("全选覆盖全部匹配结果", style = MaterialTheme.typography.caption, modifier = Modifier.weight(1f))
-                        TextButton(enabled = !busy && !controller.querying && controller.offset > 0, onClick = { controller.movePage(-1) }) { Text("上一页") }
+                        TextButton(enabled = (!busy || controller.scanControl != null) && !controller.querying && controller.offset > 0, onClick = { controller.movePage(-1) }) { Text("上一页") }
                         Text("${controller.offset / controller.pageSize + 1} / ${maxOf(1, (controller.total + controller.pageSize - 1) / controller.pageSize)}", style = MaterialTheme.typography.caption)
-                        TextButton(enabled = !busy && !controller.querying && controller.offset + controller.pageSize < controller.total, onClick = { controller.movePage(1) }) { Text("下一页") }
+                        TextButton(enabled = (!busy || controller.scanControl != null) && !controller.querying && controller.offset + controller.pageSize < controller.total, onClick = { controller.movePage(1) }) { Text("下一页") }
                     }
-                    if (data.roots.isEmpty()) Text("还没有 Root。添加一个资源目录，然后在 Root 管理中扫描。", modifier = Modifier.padding(20.dp))
-                    else if (results.isEmpty()) Text(if (query.reviewOnly) "没有待处理资源。" else "没有匹配结果。可清空筛选，或手动扫描 Root。", modifier = Modifier.padding(20.dp))
+                    if (data.roots.isEmpty()) Text("还没有 Root。添加资料库目录，在其中建立 bucket-000001 并放入资源后扫描。", modifier = Modifier.padding(20.dp))
+                    else if (results.isEmpty()) Text(if (query.reviewOnly) "没有待处理资源。" else "没有匹配结果。请将资源放入 bucket-000001 等目录，清空筛选或手动扫描 Root。", modifier = Modifier.padding(20.dp))
                     val browserContext = BrowserContext(
                         results.map { resource -> BrowserItem(PreviewTarget(rootsById.getValue(resource.rootId), resource), data.links[resource.id].orEmpty().mapNotNull { tagsById[it]?.name }.sorted(), reviewsByResource[resource.id].orEmpty()) },
                         selected, focused, !busy && !controller.querying,
@@ -275,5 +278,21 @@ private data class Confirmation(val title: String, val body: String, val action:
         Surface(Modifier.width(650.dp).heightIn(max = 700.dp), shape = MaterialTheme.shapes.medium, elevation = 12.dp) {
             Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) { Text(title, style = MaterialTheme.typography.h6); content() }
         }
+    }
+}
+
+@Composable private fun ScanStatus(control: ScanControl) {
+    var progress by remember(control) { mutableStateOf(control.progress) }
+    var seconds by remember(control) { mutableStateOf(0L) }
+    LaunchedEffect(control) {
+        while (true) {
+            progress = control.progress
+            seconds = (System.nanoTime() - control.startedAt) / 1_000_000_000
+            kotlinx.coroutines.delay(250)
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("${if (progress.committing) "正在保存扫描结果" else if (progress.cancelling) "等待当前读取返回后取消" else progress.bucket} · 已发现 ${progress.count} 项 · ${seconds} 秒", modifier = Modifier.weight(1f))
+        TextButton(enabled = !progress.committing && !progress.cancelling, onClick = { control.cancel(); progress = control.progress }) { Text("取消扫描") }
     }
 }

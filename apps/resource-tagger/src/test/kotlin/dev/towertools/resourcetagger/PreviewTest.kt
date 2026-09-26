@@ -69,10 +69,10 @@ class PreviewTest {
         val a = PreviewStorage(temp, "one").configDirectory()
         val b = PreviewStorage(temp, "two").cacheDirectory()
         assertNotEquals(a.parent, b.parent); assertTrue(a.startsWith(temp)); assertTrue(b.startsWith(temp))
-        val rootPath = Files.createDirectory(temp.resolve("root"))
-        val file = Files.writeString(rootPath.resolve("file.txt"), "unchanged")
+        val rootPath = Files.createDirectory(temp.resolve("root")); Files.createDirectory(rootPath.resolve("bucket-000001"))
+        val file = Files.writeString(rootPath.resolve("bucket-000001/file.txt"), "unchanged")
         val root = Root("root", rootPath.toString(), "Root", "Available", null, null, null)
-        val resource = Resource("resource", root.id, "file.txt", Kind.File, "file", Status.Active, "now", null)
+        val resource = Resource("resource", root.id, "bucket-000001/file.txt", Kind.File, "file", Status.Active, "now", null)
         val access = PreviewAccess()
         assertEquals(file, access.resolve(PreviewTarget(root, resource)))
         assertFailsWith<IllegalArgumentException> { access.resolve(PreviewTarget(root, resource.copy(status = Status.Ignored))) }

@@ -21,11 +21,11 @@ class BrowserLayoutTest {
     @get:Rule val folder = TemporaryFolder()
 
     private fun items(): List<BrowserItem> {
-        val path = folder.newFolder().toPath()
+        val path = folder.newFolder().toPath(); Files.createDirectory(path.resolve("bucket-000001"))
         val root = Root("root", path.toString(), "Root", "可访问", null, null, null)
         return listOf("a", "b").map { name ->
-            Files.writeString(path.resolve(name), name)
-            BrowserItem(PreviewTarget(root, Resource(name, root.id, name, Kind.File, name, Status.Active, "now", null)), emptyList(), emptyList())
+            Files.writeString(path.resolve("bucket-000001").resolve(name), name)
+            BrowserItem(PreviewTarget(root, Resource(name, root.id, "bucket-000001/$name", Kind.File, name, Status.Active, "now", null)), emptyList(), emptyList())
         }
     }
 

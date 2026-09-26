@@ -9,7 +9,7 @@ public class Benchmark {
  static Query query(boolean review) { return new Query("",null,null,null,false,review,Map.of()); }
  static class Fs implements ResourceFileSystem {
   List<Found> items;
-  Fs(int n) { items=new ArrayList<>(); for(int i=0;i<n;i++)items.add(new Found(String.format("资源-%06d.txt",i),Kind.File)); }
+  Fs(int n) { items=new ArrayList<>(); for(int i=0;i<n;i++)items.add(new Found(String.format("bucket-%06d/资源-%06d.txt",i/100+1,i),Kind.File)); }
   public List<Found> scan(Path p){return items;}
   public Kind inspect(Path p){return Kind.File;}
  }
@@ -28,7 +28,7 @@ public class Benchmark {
     org.sqlite.Collation.create(db,"JAVA_TEXT",new org.sqlite.Collation(){protected int xCompare(String a,String b){return a.compareTo(b);}}); db.setAutoCommit(false);String rootId;try(ResultSet r=db.createStatement().executeQuery("SELECT id FROM roots")){r.next();rootId=r.getString(1);}
     try(PreparedStatement resources=db.prepareStatement("INSERT INTO resources(id,root_id,relative_path,normalized_relative_path,kind,display_name,status,created_at,last_seen_at) VALUES(?,?,?,?, 'File',?,'Active','2026-01-01','2026-01-01')");PreparedStatement review=db.prepareStatement("INSERT INTO review_items(id,resource_id,reason,state,detected_at) VALUES(?,?,'New','Pending','2026-01-01')");PreparedStatement links=db.prepareStatement("INSERT INTO resource_tags VALUES(?,?)")) {
      for(int i=0;i<20;i++){db.createStatement().executeUpdate("INSERT INTO tags VALUES('t"+i+"','2026-01-01')");db.createStatement().executeUpdate("INSERT INTO tag_names VALUES('tn"+i+"','t"+i+"','tag"+i+"','tag"+i+"','canonical')");}
-     for(int i=0;i<n;i++){String id="r"+i,name=String.format("资源-%06d.txt",i);resources.setString(1,id);resources.setString(2,rootId);resources.setString(3,name);resources.setString(4,name);resources.setString(5,name);resources.addBatch();review.setString(1,"v"+i);review.setString(2,id);review.addBatch();for(int j=0;j<3;j++){links.setString(1,id);links.setString(2,"t"+((i+j)%20));links.addBatch();}}
+     for(int i=0;i<n;i++){String id="r"+i,name=String.format("资源-%06d.txt",i);resources.setString(1,id);resources.setString(2,rootId);resources.setString(3,String.format("bucket-%06d/",i/100+1)+name);resources.setString(4,String.format("bucket-%06d/",i/100+1)+name);resources.setString(5,name);resources.addBatch();review.setString(1,"v"+i);review.setString(2,id);review.addBatch();for(int j=0;j<3;j++){links.setString(1,id);links.setString(2,"t"+((i+j)%20));links.addBatch();}}
      resources.executeBatch();review.executeBatch();links.executeBatch();
     } db.commit();
    }System.out.println("seeded="+n);return;

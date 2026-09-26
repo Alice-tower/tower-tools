@@ -14,7 +14,7 @@ class PagingTest {
     }
     @Test fun `SQL pages equal full reference query for Unicode literal search all filters and stable ordering`() {
         val names = listOf("ＣＡＦＥ́.txt", "café.txt", "100%_done.txt", "😀file", "\uE000file") + (0..449).map { "资源-%04d.txt".format(it) }
-        val fs = FakeFs(names.mapIndexed { i, name -> Found(name, if (i % 3 == 0) Kind.Directory else Kind.File) })
+        val fs = FakeFs(names.mapIndexed { i, name -> Found("bucket-000001/" + name, if (i % 3 == 0) Kind.Directory else Kind.File) })
         Library(Database(temp.resolve("db.sqlite")), fs).use { lib ->
             val a = lib.saveRoot(null, Files.createDirectory(temp.resolve("a")).toString(), "A"); lib.scan(a)
             val b = lib.saveRoot(null, Files.createDirectory(temp.resolve("b")).toString(), "B"); lib.scan(b)
@@ -47,7 +47,7 @@ class PagingTest {
         }
     }
     @Test fun `ten thousand resources retain atomic scan review and cross-page tag semantics`() {
-        val fs = FakeFs((0 until 10000).map { Found("item-%05d".format(it), Kind.File) })
+        val fs = FakeFs((0 until 10000).map { Found("bucket-000001/" + "item-%05d".format(it), Kind.File) })
         val db = Database(temp.resolve("large.sqlite"))
         Library(db, fs).use { lib ->
             val root = lib.saveRoot(null, Files.createDirectory(temp.resolve("root")).toString(), "Root"); lib.scan(root)
@@ -59,7 +59,7 @@ class PagingTest {
             assertEquals(10000, lib.queryPage(Query(status = Status.Missing)).total)
             assertEquals(10000, lib.overview().pendingCount)
             val first = ids.first(); lib.acknowledge(first); lib.scan(root); assertEquals(9999, lib.overview().pendingCount)
-            fs.items = original.values.map { Found(it.name, it.kind) }; lib.scan(root)
+            fs.items = original.values.map { Found("bucket-000001/" + it.name, it.kind) }; lib.scan(root)
             assertEquals(ids, lib.matchingIds(Query())); assertEquals(0, lib.overview().pendingCount)
             assertEquals(10000, lib.overview().tagCounts[tag])
             // Inject a write failure partway through a large scan: earlier updates must roll back.

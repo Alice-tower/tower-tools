@@ -17,7 +17,7 @@ Tower Tools 是 Alice-tower 面向 Windows 的小型 GUI 工具集合。每个�
 | 图片元数据解析器 | 本地解析 NovelAI、A1111、角色卡和 PNG/JPEG/WebP 图片元数据，查看内嵌 PNG。 | `dev.towertools.naibox` |
 | 影音转写 | 从媒体中提取 MP3，并借助本地 Whisper CUDA 模型转写为 TXT。 | `dev.towertools.mediatranscriber` |
 | 本地项目启动器 | 登记并手动启动本地 CMD 项目，可查看 Web 端口状态。 | `dev.towertools.researchlibrarylauncher` |
-| 本地资源语义管理器 | 扫描指定目录的直接子项，以标签和别名组织文件、目录，处理缺失与重新定位。 | `dev.towertools.resourcetagger` |
+| 本地资源语义管理器 | 扫描指定目录下 Bucket 内的资源，以标签和别名组织文件、目录，处理缺失与重新定位。 | `dev.towertools.resourcetagger` |
 
 ## 仓库结构
 
