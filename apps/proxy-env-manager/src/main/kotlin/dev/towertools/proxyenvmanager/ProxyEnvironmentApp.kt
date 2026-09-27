@@ -118,15 +118,10 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
 
         Card(modifier = Modifier.fillMaxWidth(), elevation = 1.dp) {
             Row(
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 14.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(summary, modifier = Modifier.weight(1f), style = MaterialTheme.typography.subtitle1)
-                if (configured && environment != null && differentCount > 0) {
-                    Button(onClick = {
-                        execute("已应用全部预设。请重启需要使用新配置的程序。", service::setLocalProxy)
-                    }) { Text("应用全部预设") }
-                }
+                Text(summary, style = MaterialTheme.typography.subtitle1)
             }
         }
 
@@ -146,10 +141,10 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
         }
 
         Spacer(Modifier.weight(1f))
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 message,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).padding(end = 12.dp),
                 color = if (isError) MaterialTheme.colors.error else MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.caption,
                 maxLines = 2,
@@ -160,6 +155,11 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
                 onClick = { confirmClearAll = true },
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colors.error),
             ) { Text("删除全部当前值") }
+            Spacer(Modifier.width(8.dp))
+            Button(
+                enabled = configured && environment != null && differentCount > 0,
+                onClick = { execute("已应用全部预设。请重启需要使用新配置的程序。", service::setLocalProxy) },
+            ) { Text("应用全部预设") }
         }
     }
 
