@@ -25,8 +25,10 @@ import androidx.compose.material.Card
 import androidx.compose.material.Divider
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material.ExposedDropdownMenuBox
+import androidx.compose.material.ExposedDropdownMenuDefaults
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -105,6 +107,16 @@ fun LauncherApp(repository: CatalogRepository) {
                     selectedFilter = selectedFilter,
                     onMessage = { message = it },
                     onEdit = { saveError = null; editingTool = it },
+                    onToggleFavorite = { tool ->
+                        runCatching {
+                            repository.updateOverride(tool.id, tool.category, tool.order, !tool.favorite)
+                            tools = repository.load()
+                            selectedFilter = validFilter(selectedFilter, tools)
+                            message = if (tool.favorite) "已取消收藏 ${tool.displayName}" else "已收藏 ${tool.displayName}"
+                        }.onFailure {
+                            message = it.message ?: "更新收藏状态失败"
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -125,9 +137,9 @@ fun LauncherApp(repository: CatalogRepository) {
             categories = categories,
             saveError = saveError,
             onDismiss = { editingTool = null },
-            onSave = { category, order, favorite ->
+            onSave = { category, order ->
                 runCatching {
-                    repository.updateOverride(tool.id, category, order, favorite)
+                    repository.updateOverride(tool.id, category, order)
                     tools = repository.load()
                     selectedFilter = when (selectedFilter) {
                         is ToolFilter.Category -> ToolFilter.Category(category)
@@ -214,6 +226,7 @@ private fun ToolList(
     selectedFilter: ToolFilter,
     onMessage: (String) -> Unit,
     onEdit: (LauncherTool) -> Unit,
+    onToggleFavorite: (LauncherTool) -> Unit,
     modifier: Modifier,
 ) {
     val visibleTools = when (selectedFilter) {
@@ -238,7 +251,7 @@ private fun ToolList(
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (visibleTools.isEmpty()) {
-                item { Text("还没有收藏工具。右键工具并选择“编辑分类和排序”，即可添加收藏。", color = Color.Gray) }
+                item { Text("还没有收藏工具。请在“全部”中右键工具，选择“加入收藏”。", color = Color.Gray) }
             } else if (selectedFilter == ToolFilter.All) {
                 categories.forEach { category ->
                     val categoryTools = tools.filter { it.category == category }
@@ -250,12 +263,12 @@ private fun ToolList(
                         )
                     }
                     items(categoryTools, key = { it.id }) { tool ->
-                        ToolRow(tool, onMessage, { onEdit(tool) })
+                        ToolRow(tool, onMessage, { onEdit(tool) }, { onToggleFavorite(tool) })
                     }
                 }
             } else {
                 items(visibleTools, key = { it.id }) { tool ->
-                    ToolRow(tool, onMessage, { onEdit(tool) })
+                    ToolRow(tool, onMessage, { onEdit(tool) }, { onToggleFavorite(tool) })
                 }
             }
         }
@@ -264,7 +277,12 @@ private fun ToolList(
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-private fun ToolRow(tool: LauncherTool, onMessage: (String) -> Unit, onEdit: () -> Unit) {
+private fun ToolRow(
+    tool: LauncherTool,
+    onMessage: (String) -> Unit,
+    onEdit: () -> Unit,
+    onToggleFavorite: () -> Unit,
+) {
     var menuExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -300,6 +318,21 @@ private fun ToolRow(tool: LauncherTool, onMessage: (String) -> Unit, onEdit: () 
                     Text("${tool.projectName} · ${tool.version}", style = MaterialTheme.typography.caption)
                 }
                 Spacer(Modifier.width(12.dp))
+                Box(modifier = Modifier.width(80.dp), contentAlignment = Alignment.CenterStart) {
+                    if (tool.favorite) {
+                        val badgeColor = if (MaterialTheme.colors.isLight) Color(0xFF7A4B00) else Color(0xFFFFD166)
+                        val badgeBackground = if (MaterialTheme.colors.isLight) Color(0xFFFFF0C2) else Color(0xFF594214)
+                        Surface(color = badgeBackground, shape = MaterialTheme.shapes.small) {
+                            Text(
+                                "★ 已收藏",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                color = badgeColor,
+                                style = MaterialTheme.typography.caption,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
                 Text(
                     tool.description,
                     modifier = Modifier.weight(1f),
@@ -319,6 +352,10 @@ private fun ToolRow(tool: LauncherTool, onMessage: (String) -> Unit, onEdit: () 
             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                 DropdownMenuItem(onClick = {
                     menuExpanded = false
+                    onToggleFavorite()
+                }) { Text(if (tool.favorite) "取消收藏" else "加入收藏") }
+                DropdownMenuItem(onClick = {
+                    menuExpanded = false
                     onEdit()
                 }) { Text("编辑分类和排序") }
                 DropdownMenuItem(onClick = {
@@ -336,6 +373,7 @@ private fun ToolRow(tool: LauncherTool, onMessage: (String) -> Unit, onEdit: () 
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 private fun EditToolDialog(
     tool: LauncherTool,
@@ -343,13 +381,11 @@ private fun EditToolDialog(
     categories: List<String>,
     saveError: String?,
     onDismiss: () -> Unit,
-    onSave: (category: String, order: Int, favorite: Boolean) -> Unit,
+    onSave: (category: String, order: Int) -> Unit,
 ) {
     var category by remember(tool.id) { mutableStateOf(tool.category) }
     var orderText by remember(tool.id) { mutableStateOf(tool.order.toString()) }
-    var favorite by remember(tool.id) { mutableStateOf(tool.favorite) }
     var categoryMenuExpanded by remember(tool.id) { mutableStateOf(false) }
-    val favoriteChanged = favorite != tool.favorite
     val normalizedCategory = category.trim().ifEmpty { UNCATEGORIZED }
     val parsedOrder = orderText.toIntOrNull()
     val references = allTools
@@ -358,41 +394,28 @@ private fun EditToolDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("编辑 ${tool.displayName}", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                OutlinedButton(onClick = { favorite = !favorite }) {
-                    Text(when {
-                        favoriteChanged && favorite -> "★ 收藏 · 待保存"
-                        favoriteChanged -> "☆ 取消收藏 · 待保存"
-                        favorite -> "★ 已收藏"
-                        else -> "☆ 收藏"
-                    })
-                }
-            }
-        },
+        title = { Text("编辑 ${tool.displayName}", maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
             Column(modifier = Modifier.width(500.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    if (favoriteChanged) "收藏状态尚未保存，点击右下角“保存更改”后生效。"
-                    else "收藏状态与分类、排序一起保存；取消编辑不会更改设置。",
-                    color = if (favoriteChanged) MaterialTheme.colors.primary else Color.Gray,
-                    style = MaterialTheme.typography.caption,
-                )
                 Text("排序数字越小越靠前；相同数字按工具名称排列。", color = Color.Gray)
                 saveError?.let { Text(it, color = MaterialTheme.colors.error) }
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
+                ExposedDropdownMenuBox(
+                    expanded = categoryMenuExpanded,
+                    onExpandedChange = { categoryMenuExpanded = !categoryMenuExpanded },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("分类") },
-                    singleLine = true,
-                )
-                Box {
-                    TextButton(onClick = { categoryMenuExpanded = true }) {
-                        Text("选择已有分类")
-                    }
-                    DropdownMenu(
+                ) {
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = {
+                            category = it
+                            categoryMenuExpanded = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("分类（可输入新分类）") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
+                        singleLine = true,
+                    )
+                    ExposedDropdownMenu(
                         expanded = categoryMenuExpanded,
                         onDismissRequest = { categoryMenuExpanded = false },
                     ) {
@@ -439,7 +462,7 @@ private fun EditToolDialog(
         confirmButton = {
             Button(
                 enabled = parsedOrder != null,
-                onClick = { onSave(normalizedCategory, checkNotNull(parsedOrder), favorite) },
+                onClick = { onSave(normalizedCategory, checkNotNull(parsedOrder)) },
             ) {
                 Text("保存更改")
             }
