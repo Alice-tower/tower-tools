@@ -1,12 +1,11 @@
-package dev.towertools.launcher.tabs.localprojects
+package dev.towertools.launcher.tabs.cmd
 
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-/** Keep the retired application's data location so existing projects remain available. */
-object ProjectPaths {
-    const val legacyApplicationId = "dev.towertools.researchlibrarylauncher"
+object CmdPaths {
+    private const val tabKey = "cmd"
 
     val dataDirectory: Path by lazy {
         val localAppData = System.getenv("LOCALAPPDATA")
@@ -14,7 +13,7 @@ object ProjectPaths {
             ?.let(Paths::get)
             ?: Paths.get(System.getProperty("user.home"), "AppData", "Local")
 
-        localAppData.resolve("Alice-tower").resolve("TowerTools").resolve(legacyApplicationId)
+        localAppData.resolve("Alice-tower").resolve("TowerLauncher").resolve("tabs").resolve(tabKey)
             .also(Files::createDirectories)
     }
 }

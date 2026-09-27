@@ -16,7 +16,7 @@ Tower Tools 包含相互独立的 Windows x64 桌面工具，以及可承载内�
 
 - 工具数据：`%LOCALAPPDATA%\Alice-tower\TowerTools\<application-id>\`
 - 启动器数据：`%LOCALAPPDATA%\Alice-tower\TowerLauncher\`
-- 新 Tab 的默认业务数据：`%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`；从旧工具迁入时可明确保留旧路径。
+- Tab 业务数据：`%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`；从旧工具迁入时将旧配置迁移到该目录。
 - 日志位于各应用数据目录下的 `logs/`。
 
 ## 便携输出
@@ -39,7 +39,7 @@ outputs/
 
 ## 启动器内置 Tab
 
-启动器保持独立的单模块 Compose Desktop 项目。宿主只负责窗口、主题、单实例及 Tab 切换；每个 Tab 的页面、状态、数据和操作位于自己的业务包。当前 `TabId` 枚举和编译时注册表包含“工具”及“本地项目”Tab。工具 Tab 使用生成的便携工具目录和用户分类设置；本地项目 Tab 保留原 `dev.towertools.researchlibrarylauncher` 的数据路径，这个历史 ID 不再对应仓库中的独立便携工具。新 Tab 不创建 `tool.json` 或工具目录条目。详细边界、数据规则和开发步骤见 [启动器 Tab 开发规范](launcher-tabs.md)。
+启动器保持独立的单模块 Compose Desktop 项目。宿主只负责窗口、主题、单实例及 Tab 切换；每个 Tab 的页面、状态、数据和操作位于自己的业务包。当前 `TabId` 枚举和编译时注册表包含“工具”及“CMD”Tab。工具 Tab 使用生成的便携工具目录和用户分类设置；CMD Tab 使用 `TowerLauncher\tabs\cmd` 管理项目配置。新 Tab 不创建 `tool.json` 或工具目录条目。详细边界、数据规则和开发步骤见 [启动器 Tab 开发规范](launcher-tabs.md)。
 
 ## 工具内部扩展
 

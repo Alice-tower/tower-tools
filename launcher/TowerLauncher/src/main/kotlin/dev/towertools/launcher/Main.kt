@@ -15,9 +15,9 @@ import com.sun.jna.WString
 import com.sun.jna.platform.win32.Shell32
 import java.awt.EventQueue
 import java.awt.Frame
-import dev.towertools.launcher.tabs.localprojects.LocalProjectsTab
-import dev.towertools.launcher.tabs.localprojects.LocalProjectsTabState
-import dev.towertools.launcher.tabs.localprojects.ProjectController
+import dev.towertools.launcher.tabs.cmd.CmdTab
+import dev.towertools.launcher.tabs.cmd.CmdTabState
+import dev.towertools.launcher.tabs.cmd.ProjectController
 import dev.towertools.launcher.tabs.tools.CatalogRepository
 import dev.towertools.launcher.tabs.tools.ToolsTab
 import dev.towertools.launcher.tabs.tools.ToolsTabState
@@ -52,12 +52,12 @@ fun main() {
             MaterialTheme(colors = if (isSystemInDarkTheme()) darkColors() else lightColors()) {
                 val toolsState = remember { ToolsTabState(repository) }
                 val projectController = remember { ProjectController() }
-                val projectsState = remember { LocalProjectsTabState(projectController) }
+                val projectsState = remember { CmdTabState(projectController) }
                 LauncherApp(
                     listOf(
                         LauncherTab(TabId.TOOLS) { ToolsTab(repository, toolsState) },
-                        LauncherTab(TabId.LOCAL_PROJECTS) {
-                            LocalProjectsTab(projectController, projectsState, window)
+                        LauncherTab(TabId.CMD) {
+                            CmdTab(projectController, projectsState, window)
                         },
                     ),
                 )

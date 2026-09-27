@@ -1,4 +1,4 @@
-package dev.towertools.launcher.tabs.localprojects
+package dev.towertools.launcher.tabs.cmd
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +48,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 @Composable
-fun LocalProjectsTab(controller: ProjectController, state: LocalProjectsTabState, owner: Frame) {
+fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
     var projects by state.projects
     var status by state.status
     var editingProject by state.editingProject
@@ -79,7 +79,7 @@ fun LocalProjectsTab(controller: ProjectController, state: LocalProjectsTabState
     Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("本地项目", style = MaterialTheme.typography.h5)
+                Text("CMD", style = MaterialTheme.typography.h5)
                 Text("${projects.size} 个项目", style = MaterialTheme.typography.caption, color = Color.Gray)
             }
             Button(onClick = { addingProject = true }) { Text("添加项目") }

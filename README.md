@@ -6,7 +6,7 @@ Tower Tools 是 Alice-tower 面向 Windows 的小型 GUI 工具集合，使用 K
 
 ## 使用便携应用
 
-运行 `outputs\launcher\TowerLauncher.exe` 可在“工具”Tab 中浏览并启动已打包的工具，在“本地项目”Tab 中登记和启动本机 `.cmd` 项目。`outputs/` 下的完整目录可整体携带；每个应用都包含精简的 Java runtime，因此必须整体复制。
+运行 `outputs\launcher\TowerLauncher.exe` 可在“工具”Tab 中浏览并启动已打包的工具，在“CMD”Tab 中登记和启动本机 `.cmd` 项目。`outputs/` 下的完整目录可整体携带；每个应用都包含精简的 Java runtime，因此必须整体复制。
 
 当前工具：
 
@@ -22,7 +22,7 @@ Tower Tools 是 Alice-tower 面向 Windows 的小型 GUI 工具集合，使用 K
 
 - `apps/`：独立工具项目。
 - `template/windows-compose-app/`：新工具的源模板。
-- `launcher/TowerLauncher/`：名为“工具塔”的启动器，内置工具和本地项目 Tab。
+- `launcher/TowerLauncher/`：名为“工具塔”的启动器，内置工具和 CMD Tab。
 - `catalog/tools.json`：由生命周期脚本维护的源目录。
 - `branding/`：用户绘制的统一图标原图和缩小后的 Windows 图标资源。
 - `scripts/`：创建、删除、构建和目录同步脚本。

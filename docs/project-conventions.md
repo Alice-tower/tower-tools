@@ -20,7 +20,7 @@
 
 独立工具的 Kotlin package 与 Gradle group 均等于 Application ID。ID 发布后不得复用给其他工具，也不得修改。
 
-启动器 Tab 使用 `TabId` 枚举值标识页面，在 `launcher/TowerLauncher/src/main/kotlin/dev/towertools/launcher/tabs/<feature>/` 中维护业务包。Tab 共用 `dev.towertools.launcher` 的应用身份，没有自己的 `tool.json`、独立 Application ID 或 Gradle group。若 Tab 的标识进入持久化数据，须另设稳定数据键并处理后续迁移；详见 [Tab 开发规范](launcher-tabs.md)。
+启动器 Tab 使用 `TabId` 枚举值标识页面，在 `launcher/TowerLauncher/src/main/kotlin/dev/towertools/launcher/tabs/<feature>/` 中维护业务包。Tab 共用 `dev.towertools.launcher` 的应用身份，没有自己的 `tool.json`、独立 Application ID 或 Gradle group。各 Tab 的业务数据位于 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`，由该业务维护。若 Tab 的标识进入持久化数据，须另设稳定数据键并处理后续迁移；详见 [Tab 开发规范](launcher-tabs.md)。
 
 作者/vendor 为 `Alice-tower`。仓库原创代码采用根目录 `LICENSE` 中的 MIT 许可证；第三方组件保留各自的许可证。
 

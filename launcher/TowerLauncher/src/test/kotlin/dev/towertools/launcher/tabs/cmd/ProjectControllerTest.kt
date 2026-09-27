@@ -1,4 +1,4 @@
-package dev.towertools.launcher.tabs.localprojects
+package dev.towertools.launcher.tabs.cmd
 
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -32,39 +32,11 @@ class ProjectControllerTest {
                 """.trimIndent(),
             )
 
-            val projects = ProjectRegistry(projectsFile, root.resolve("settings.properties")).load()
+            val projects = ProjectRegistry(projectsFile).load()
             assertEquals(listOf("existing-project"), projects.map(LocalProject::id))
             assertEquals("现有项目", projects.single().name)
             assertEquals(script, projects.single().scriptPath)
             assertEquals(4173, projects.single().webPort)
-        } finally {
-            root.deleteRecursively()
-        }
-    }
-
-    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
-    @Test
-    fun legacyScriptIsImportedAndPreservedWhenAddingAnotherProject() {
-        val root = createTempDirectory("local-project-migration-")
-        try {
-            val legacy = root.resolve("settings.properties")
-            val projectsFile = root.resolve("projects.properties")
-            val original = root.resolve("old.cmd")
-            val added = root.resolve("new.cmd")
-            Files.writeString(original, "@echo off")
-            Files.writeString(added, "@echo off")
-            Files.writeString(legacy, "scriptPath=${original.toString().replace("\\", "\\\\")}")
-            val controller = ProjectController(ProjectRegistry(projectsFile, legacy))
-
-            assertEquals(listOf("研究资料库"), controller.projects().map(LocalProject::name))
-            assertEquals(4173, controller.projects().single().webPort)
-            controller.saveProject(null, "第二个项目", added, null)
-
-            val reloaded = ProjectController(ProjectRegistry(projectsFile, legacy)).projects()
-            assertEquals(listOf("研究资料库", "第二个项目"), reloaded.map(LocalProject::name))
-            assertEquals(original, reloaded.first().scriptPath)
-            assertEquals(null, reloaded.last().webPort)
-            assertTrue(Files.exists(legacy))
         } finally {
             root.deleteRecursively()
         }
@@ -77,7 +49,7 @@ class ProjectControllerTest {
         try {
             val script = root.resolve("my project.cmd")
             Files.writeString(script, "@echo off")
-            val controller = ProjectController(ProjectRegistry(root.resolve("projects.properties"), root.resolve("old.properties")))
+            val controller = ProjectController(ProjectRegistry(root.resolve("projects.properties")))
 
             val added = controller.saveProject(null, "  我的项目  ", script, 8080).single()
             assertEquals("我的项目", added.name)
@@ -102,7 +74,7 @@ class ProjectControllerTest {
             val invalid = "count=not-a-number"
             Files.writeString(projectsFile, invalid)
             Files.writeString(script, "@echo off")
-            val controller = ProjectController(ProjectRegistry(projectsFile, root.resolve("old.properties")))
+            val controller = ProjectController(ProjectRegistry(projectsFile))
 
             assertFailsWith<IllegalStateException> {
                 controller.saveProject(null, "新项目", script, null)

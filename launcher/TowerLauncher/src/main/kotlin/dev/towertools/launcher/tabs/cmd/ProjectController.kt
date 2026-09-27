@@ -1,4 +1,4 @@
-package dev.towertools.launcher.tabs.localprojects
+package dev.towertools.launcher.tabs.cmd
 
 import dev.towertools.launcher.AppLog
 import java.awt.Desktop
@@ -32,11 +32,10 @@ data class OperationResult(val message: String, val isError: Boolean = false) {
 enum class PortStatus { IN_USE, AVAILABLE, UNKNOWN }
 
 class ProjectRegistry(
-    private val projectsFile: Path = ProjectPaths.dataDirectory.resolve("projects.properties"),
-    private val legacyFile: Path = ProjectPaths.dataDirectory.resolve("settings.properties"),
+    private val projectsFile: Path = CmdPaths.dataDirectory.resolve("projects.properties"),
 ) {
     fun load(): List<LocalProject> {
-        if (!Files.exists(projectsFile)) return loadLegacy()
+        if (!Files.exists(projectsFile)) return emptyList()
         val properties = Properties()
         Files.newInputStream(projectsFile).use(properties::load)
         val count = properties.getProperty("count")?.toIntOrNull()
@@ -77,17 +76,11 @@ class ProjectRegistry(
             Files.deleteIfExists(temporary)
         }
     }
-
-    private fun loadLegacy(): List<LocalProject> {
-        if (!Files.isRegularFile(legacyFile)) return emptyList()
-        val properties = Properties()
-        Files.newInputStream(legacyFile).use(properties::load)
-        val script = properties.getProperty("scriptPath")?.takeIf(String::isNotBlank) ?: return emptyList()
-        return listOf(LocalProject("legacy-research-library", "研究资料库", Paths.get(script), 4173))
-    }
 }
 
-class ProjectController(private val registry: ProjectRegistry = ProjectRegistry()) {
+class ProjectController(registry: ProjectRegistry? = null) {
+    private val registry: ProjectRegistry by lazy { registry ?: ProjectRegistry() }
+
     fun projects(): List<LocalProject> = registry.load()
 
     fun saveProject(existingId: String?, name: String, scriptPath: Path, webPort: Int?): List<LocalProject> {

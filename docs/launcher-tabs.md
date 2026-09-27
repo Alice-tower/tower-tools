@@ -9,7 +9,7 @@
 | 运行 | 自己的窗口、进程、Application ID 和便携目录 | 共用 `TowerLauncher.exe` 的窗口、进程、Application ID 与便携目录 |
 | 源码 | `apps/<directory-name>/`，独立 Gradle 项目 | `launcher/TowerLauncher/src/main/kotlin/dev/towertools/launcher/tabs/<feature>/`，属于启动器 Gradle 项目 |
 | 注册 | `tool.json` 经脚本生成 `catalog/tools.json`，显示在“工具”Tab | `TabId` 枚举和 `Main.kt` 中的 `LauncherTab` 列表，编译时注册 |
-| 用户数据 | `%LOCALAPPDATA%\Alice-tower\TowerTools\<application-id>\` | 通常位于 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\` |
+| 新业务的用户数据 | `%LOCALAPPDATA%\Alice-tower\TowerTools\<application-id>\` | `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\` |
 | 构建 | `Build-Tool.ps1`；新增或删除按 `New-Tool.ps1`、`Remove-Tool.ps1` | `Build-Launcher.ps1`；不使用工具创建或删除脚本 |
 
 新 Tab 不创建 `apps/` 项目、`tool.json`、独立 EXE 或新的 Application ID，也不写入 `catalog/tools.json`。当前注册方式是编译时组合；不把 Tab 当成可从外部目录动态加载的插件。
@@ -21,7 +21,7 @@
 3. 把新业务的页面、状态、模型、读写和操作放在 `tabs/<feature>/` 包，测试放在对应的 `src/test/.../tabs/<feature>/` 包。Tab 内部可以按功能再拆文件；不要把业务逻辑堆进 `Main.kt` 或 `LauncherApp.kt`。
 4. Tab 之间不直接读写彼此的状态或配置。“工具”Tab 的分类、收藏和 `CatalogRepository` 只管理独立工具。确有共同界面需求时再提取不含业务含义的组件；新 Tab 可自行决定页面布局，不必套用工具分类侧栏。
 
-目前的 `TOOLS` 与 `LOCAL_PROJECTS` 就是两种不同的数据来源：前者合并生成目录与工具用户设置，后者直接管理用户登记的本地项目。后续 Git 仓库等 Tab 应建立自己的数据与操作边界。
+目前的 `TOOLS` 与 `CMD` 就是两种不同的数据来源：前者合并生成目录与 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\user-settings.json` 中的工具设置，后者直接管理用户登记的 `.cmd` 项目。后续 Git 仓库等 Tab 应建立自己的数据与操作边界。
 
 ## 页面状态与后台工作
 
@@ -32,9 +32,9 @@
 
 ## 用户数据与兼容
 
-新 Tab 的默认数据目录使用 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`；`<stable-key>` 采用稳定的小写短名，并在该 Tab 的路径代码中集中定义。运行时数据、缓存与日志不得写在源码或 `outputs/` 旁。`user-settings.json` 的 `tools` 字段只属于“工具”Tab，不作为新 Tab 的通用配置容器。
+新 Tab 的数据目录使用 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`；`<stable-key>` 采用稳定的小写短名，并在该 Tab 的路径代码中集中定义。Tab 数据归属启动器，子目录名直接表明对应业务，不借用工具的 Application ID。运行时数据、缓存与日志不得写在源码或 `outputs/` 旁。`user-settings.json` 的 `tools` 字段只属于“工具”Tab，不作为新 Tab 的通用配置容器。
 
-更新启动器不得覆盖用户数据。配置解析失败时应停止写入并显示错误，避免以空数据覆盖原文件。若从独立工具迁入 Tab，先核对原配置格式和路径，再决定读取旧路径还是迁移；选择迁移时应保证重复执行安全，并在验收前保留原文件。当前“本地项目”Tab 是已确定的例外：继续读写 `%LOCALAPPDATA%\Alice-tower\TowerTools\dev.towertools.researchlibrarylauncher\projects.properties`，并兼容旧 `settings.properties`。历史 ID 仅用于保留数据路径，不赋予 Tab 新的应用身份。
+更新启动器不得覆盖用户数据。配置解析失败时应停止写入并显示错误，避免以空数据覆盖原文件。若从独立工具迁入 Tab，先核对原配置格式和路径，迁移过程须可重复执行、不覆盖已有 Tab 配置，并保留旧文件供核对。CMD Tab 当前只读写 `TowerLauncher\tabs\cmd\projects.properties`。
 
 ## 开发与交付顺序
 

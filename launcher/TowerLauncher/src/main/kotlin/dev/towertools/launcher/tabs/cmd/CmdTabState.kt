@@ -1,8 +1,8 @@
-package dev.towertools.launcher.tabs.localprojects
+package dev.towertools.launcher.tabs.cmd
 
 import androidx.compose.runtime.mutableStateOf
 
-class LocalProjectsTabState(controller: ProjectController) {
+class CmdTabState(controller: ProjectController) {
     private val initialProjects = runCatching(controller::projects)
 
     val projects = mutableStateOf(initialProjects.getOrDefault(emptyList()))

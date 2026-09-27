@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 
 enum class TabId(val title: String) {
     TOOLS("工具"),
-    LOCAL_PROJECTS("本地项目"),
+    CMD("CMD"),
 }
 
 data class LauncherTab(val id: TabId, val content: @Composable () -> Unit)
