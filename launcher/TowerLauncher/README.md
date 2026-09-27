@@ -1,15 +1,17 @@
 # 工具塔
 
-在“工具”Tab 中浏览和启动便携工具，并在“CMD”Tab 中登记和启动本机 `.cmd` 项目。
+在“工具”Tab 中浏览和启动便携工具，在“CMD”Tab 中登记和启动本机 `.cmd` 项目，在“仓库”Tab 中发现 Git 仓库。
 
 - 项目：`TowerLauncher`
 - Application ID：`dev.towertools.launcher`
-- 版本：`1.2.0`
+- 版本：`1.4.0`
 - 作者：`Alice-tower`
 
 侧边栏的“收藏”位于“全部”上方；启动时如果有收藏工具则默认显示收藏，否则显示全部。收藏的工具在列表中显示“★ 已收藏”标记。右键工具可直接选择“加入收藏”或“取消收藏”，操作立即生效；“编辑分类和排序”对话框只修改分类和排序。
 
 工具页的分类与收藏行为保持不变；切换 Tab 后筛选状态会保留。CMD 页读取和保存 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\cmd\projects.properties`。项目列表可按名称或路径搜索，支持添加、编辑、删除登记、手动启动，以及每 3 秒检测本地 Web 端口；端口检测仅在 CMD Tab 显示时运行。
+
+仓库页将扫描路径和最近一次扫描结果保存在 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\repositories\locations.properties`。右上角“设置”对话框管理路径并显示每个路径的子目录数量、仓库数量和上次扫描时间；其左侧的“刷新”按钮会扫描所有已添加路径。扫描只检查各路径的直接子目录，忽略路径本身；只有包含 `.git` 目录的子目录会显示为 Git 仓库。页面主体合并显示已扫描到的仓库名称和完整路径。重新打开启动器时显示上次结果，不自动扫描；移除路径只删除登记。
 
 编辑分类时可从分类输入框的下拉列表选择已有分类，也可直接输入新分类。
 
@@ -36,4 +38,4 @@
 
 ## 开发 Tab
 
-Tab 由 `TabId` 枚举和 `Main.kt` 中的 `LauncherTab` 列表编译时注册。工具页和 CMD 页分别维护在 `tabs/tools`、`tabs/cmd` 包；新 Tab 也应有独立业务包、状态和用户数据。新 Tab 的数据目录统一位于 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`。完整约定及交付步骤见 [启动器 Tab 开发规范](../../docs/launcher-tabs.md)。
+Tab 由 `TabId` 枚举和 `Main.kt` 中的 `LauncherTab` 列表编译时注册。工具页、CMD 页和仓库页分别维护在 `tabs/tools`、`tabs/cmd`、`tabs/repositories` 包；新 Tab 也应有独立业务包、状态和用户数据。新 Tab 的数据目录统一位于 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`。完整约定及交付步骤见 [启动器 Tab 开发规范](../../docs/launcher-tabs.md)。

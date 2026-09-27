@@ -18,6 +18,9 @@ import java.awt.Frame
 import dev.towertools.launcher.tabs.cmd.CmdTab
 import dev.towertools.launcher.tabs.cmd.CmdTabState
 import dev.towertools.launcher.tabs.cmd.ProjectController
+import dev.towertools.launcher.tabs.repositories.RepositoryController
+import dev.towertools.launcher.tabs.repositories.RepositoryTab
+import dev.towertools.launcher.tabs.repositories.RepositoryTabState
 import dev.towertools.launcher.tabs.tools.CatalogRepository
 import dev.towertools.launcher.tabs.tools.ToolsTab
 import dev.towertools.launcher.tabs.tools.ToolsTabState
@@ -53,11 +56,19 @@ fun main() {
                 val toolsState = remember { ToolsTabState(repository) }
                 val projectController = remember { ProjectController() }
                 val projectsState = remember { CmdTabState(projectController) }
+                val repositoryController = remember { RepositoryController() }
+                val repositoryState = remember { RepositoryTabState(repositoryController) }
+                DisposableEffect(repositoryState) {
+                    onDispose(repositoryState::close)
+                }
                 LauncherApp(
                     listOf(
                         LauncherTab(TabId.TOOLS) { ToolsTab(repository, toolsState) },
                         LauncherTab(TabId.CMD) {
                             CmdTab(projectController, projectsState, window)
+                        },
+                        LauncherTab(TabId.REPOSITORIES) {
+                            RepositoryTab(repositoryController, repositoryState, window)
                         },
                     ),
                 )
