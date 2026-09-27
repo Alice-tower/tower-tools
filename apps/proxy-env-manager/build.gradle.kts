@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.proxyenvmanager"
-version = "1.0.6"
+version = "1.0.12"
 
 kotlin {
     jvmToolchain(21)
@@ -28,7 +28,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "ProxyEnvManager"
-            packageVersion = "1.0.6"
+            packageVersion = "1.0.12"
             vendor = "Alice-tower"
         }
     }
