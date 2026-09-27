@@ -28,6 +28,7 @@ try {
 
     [IO.Directory]::CreateDirectory($stage) | Out-Null
     Copy-Item -LiteralPath $executable.Directory.FullName -Destination $prepared -Recurse
+    Copy-Item -LiteralPath (Join-Path $projectPath 'icons\app-icon.ico') -Destination (Join-Path $prepared 'app-icon.ico')
     Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $prepared 'LICENSE')
     Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $prepared 'THIRD_PARTY_NOTICES.md')
     Copy-Item -LiteralPath (Join-Path $repoRoot 'third-party') -Destination (Join-Path $prepared 'third-party') -Recurse

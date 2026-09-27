@@ -4,7 +4,7 @@
 
 - 项目：`ImageProcessor`
 - Application ID：`dev.towertools.imageprocessor`
-- 版本：`1.1.1`
+- 版本：`1.1.2`
 - 作者：`Alice-tower`
 
 ## 功能

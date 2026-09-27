@@ -4,7 +4,7 @@
 
 - 项目：`MediaTranscriber`
 - Application ID：`dev.towertools.mediatranscriber`
-- 版本：`1.0.1`
+- 版本：`1.0.2`
 - 作者：`Alice-tower`
 
 ## 使用

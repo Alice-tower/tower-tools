@@ -23,6 +23,7 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -30,6 +31,8 @@ import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.sun.jna.WString
+import com.sun.jna.platform.win32.Shell32
 import java.awt.EventQueue
 import java.awt.FileDialog
 import java.awt.Frame
@@ -44,12 +47,17 @@ import javax.imageio.ImageIO
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
+    runCatching {
+        val result = Shell32.INSTANCE.SetCurrentProcessExplicitAppUserModelID(WString(AppMetadata.id))
+        check(result.toInt() == 0) { "Windows AppUserModelID setup failed: $result" }
+    }.onFailure { AppLog.logger.warning(it.message) }
+
     val instance = runCatching { SingleInstance.acquire(AppMetadata.id) }
         .onFailure { AppLog.logger.severe("单实例控制启动失败：${it.message}") }
         .getOrNull() ?: return
     application {
         val state = rememberWindowState(width = 1180.dp, height = 760.dp)
-        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName) {
+        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName, icon = painterResource("app-icon.png")) {
             var parsed by remember { mutableStateOf<ImageInfo?>(null) }
             var currentBytes by remember { mutableStateOf<ByteArray?>(null) }
             var status by remember { mutableStateOf("选择、拖入图片，或按 Ctrl+V 粘贴") }

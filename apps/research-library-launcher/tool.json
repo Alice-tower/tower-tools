@@ -3,7 +3,7 @@
   "projectName": "ResearchLibraryLauncher",
   "displayName": "本地项目启动器",
   "description": "登记并启动本地 CMD 项目，可查看 Web 端口状态",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Alice-tower",
   "uuid": "dc8c58ac-d062-4bbe-af42-fc90cfe44528",
   "executableName": "ResearchLibraryLauncher.exe"

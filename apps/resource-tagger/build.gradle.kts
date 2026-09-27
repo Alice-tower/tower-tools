@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.resourcetagger"
-version = "2.1.1"
+version = "2.1.2"
 
 kotlin {
     jvmToolchain(21)
@@ -13,6 +13,7 @@ kotlin {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("net.java.dev.jna:jna-platform:5.19.1")
     implementation("org.jetbrains.compose.material:material:1.11.1")
     implementation("org.xerial:sqlite-jdbc:3.50.3.0")
     testImplementation(kotlin("test-junit5"))
@@ -32,8 +33,11 @@ compose.desktop {
         nativeDistributions {
             modules("java.sql", "jdk.unsupported")
             packageName = "ResourceTagger"
-            packageVersion = "2.1.1"
+            packageVersion = "2.1.2"
             vendor = "Alice-tower"
+            windows {
+                iconFile.set(project.file("icons/app-icon.ico"))
+            }
         }
     }
 }

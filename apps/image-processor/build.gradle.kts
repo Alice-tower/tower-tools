@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.imageprocessor"
-version = "1.1.1"
+version = "1.1.2"
 
 kotlin {
     jvmToolchain(21)
@@ -13,6 +13,7 @@ kotlin {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("net.java.dev.jna:jna-platform:5.19.1")
     implementation("org.jetbrains.compose.material:material:1.11.1")
     implementation("com.drewnoakes:metadata-extractor:2.21.0")
     implementation("com.twelvemonkeys.imageio:imageio-jpeg:3.14.0")
@@ -32,8 +33,11 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "ImageProcessor"
-            packageVersion = "1.1.1"
+            packageVersion = "1.1.2"
             vendor = "Alice-tower"
+            windows {
+                iconFile.set(project.file("icons/app-icon.ico"))
+            }
         }
     }
 }

@@ -28,3 +28,7 @@ Compose Desktop 的 `createDistributable` task 会创建 Windows application ima
 新增或升级依赖后，发布前检查便携目录实际包含的 JAR、原生库和 Java runtime。对新增组件核对官方许可与必须保留的版权、NOTICE 文件，在 `THIRD_PARTY_NOTICES.md` 中记录组件、版本、许可和来源，并将需要随包分发的许可或 NOTICE 文本加入 `third-party/licenses/`。已有组件版本或许可发生变化时同步更新记录，然后重新运行仓库构建脚本，确认新声明和文本已进入便携目录。根目录 `LICENSE` 是仓库原创代码的 MIT 许可，无需因普通依赖变更而改写，也不能代替第三方组件的许可。
 
 未配置 MSI、shortcut、signing 或自动更新机制。
+
+所有项目的 `nativeDistributions.windows.iconFile` 指向项目内的 `icons/app-icon.ico`；运行时主窗口使用 `src/main/resources/app-icon.png`。因此在 IDEA 运行和构建便携目录时会分别显示窗口图标和 EXE 图标。
+仓库构建脚本还会把 `app-icon.ico` 放到每个便携目录根部，供 Windows 快捷方式在图标缓存未更新时明确指定图标来源。
+各应用使用仓库已记录许可的 JNA 5.19.1，在创建窗口前向 Windows 设置稳定 AppUserModelID；这使任务栏使用应用自身的图标。

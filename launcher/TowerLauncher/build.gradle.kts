@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.towertools.launcher"
-version = "1.0.3"
+version = "1.0.4"
 
 kotlin {
     jvmToolchain(21)
@@ -16,6 +16,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation("org.jetbrains.compose.material:material:1.11.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("net.java.dev.jna:jna-platform:5.19.1")
     testImplementation(kotlin("test-junit5"))
 }
 
@@ -29,8 +30,11 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "TowerLauncher"
-            packageVersion = "1.0.3"
+            packageVersion = "1.0.4"
             vendor = "Alice-tower"
+            windows {
+                iconFile.set(project.file("icons/app-icon.ico"))
+            }
         }
     }
 }

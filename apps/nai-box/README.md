@@ -28,4 +28,4 @@ NaiBox 是 Windows x64 桌面工具。使用 Kotlin/JVM 与 Compose Desktop，�
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/Build-Tool.ps1 -Id dev.towertools.naibox
 ```
 
-项目：`NaiBox` · Application ID：`dev.towertools.naibox` · 版本：`1.0.0`。
+项目：`NaiBox` · Application ID：`dev.towertools.naibox` · 版本：`1.0.1`。

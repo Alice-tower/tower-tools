@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -50,6 +51,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.sun.jna.WString
+import com.sun.jna.platform.win32.Shell32
 import java.awt.EventQueue
 import java.awt.FileDialog
 import java.awt.Frame
@@ -57,6 +60,11 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 fun main() {
+    runCatching {
+        val result = Shell32.INSTANCE.SetCurrentProcessExplicitAppUserModelID(WString(AppMetadata.id))
+        check(result.toInt() == 0) { "Windows AppUserModelID setup failed: $result" }
+    }.onFailure { AppLog.logger.warning(it.message) }
+
     val singleInstance = runCatching { SingleInstance.acquire(AppMetadata.id) }
         .onFailure { AppLog.logger.severe("Unable to initialize single-instance control: ${it.message}") }
         .getOrNull() ?: return
@@ -64,7 +72,7 @@ fun main() {
 
     application {
         val state = rememberWindowState(width = 860.dp, height = 600.dp)
-        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName) {
+        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName, icon = painterResource("app-icon.png")) {
             DisposableEffect(window) {
                 singleInstance.onActivate {
                     EventQueue.invokeLater {

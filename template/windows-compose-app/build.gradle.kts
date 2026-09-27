@@ -13,6 +13,7 @@ kotlin {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("net.java.dev.jna:jna-platform:5.19.1")
     implementation("org.jetbrains.compose.material:material:1.11.1")
     testImplementation(kotlin("test-junit5"))
 }
@@ -29,6 +30,9 @@ compose.desktop {
             packageName = "__APP_PROJECT_NAME__"
             packageVersion = "__APP_VERSION__"
             vendor = "Alice-tower"
+            windows {
+                iconFile.set(project.file("icons/app-icon.ico"))
+            }
         }
     }
 }

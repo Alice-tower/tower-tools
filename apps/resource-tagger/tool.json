@@ -3,7 +3,7 @@
     "projectName":  "ResourceTagger",
     "displayName":  "本地资源语义管理器",
     "description":  "以标签组织本地目录和文件，支持 Bucket 扫描、组合筛选与资源定位。",
-    "version":  "2.1.1",
+    "version":  "2.1.2",
     "author":  "Alice-tower",
     "uuid":  "6a211259-f3ba-4a64-ae4f-f5b5cbbb74b4",
     "executableName":  "ResourceTagger.exe"

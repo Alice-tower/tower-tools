@@ -4,7 +4,7 @@
 
 - 项目：`ResourceTagger`
 - Application ID：`dev.towertools.resourcetagger`
-- 版本：`2.1.1`
+- 版本：`2.1.2`
 - 作者：`Alice-tower`
 - 源目录：`apps/resource-tagger`
 - 当前存储规则：[Bucket 与 NAS](BUCKET_STORAGE.md)；[v0.2 方案](PRODUCT_SPEC.md)保留为历史背景。
@@ -46,6 +46,8 @@ Bucket 仅是磁盘目录命名规则，没有独立实体或表。资源保存 
 当前实现、后续接入规范与尚未实现的能力见 [预览扩展架构](PREVIEW_ARCHITECTURE.md)。这些约定是可调整的工作基线，不是不可修改的限制；发现更合适的实现时，可以同步优化主程序、插件、测试和文档。
 
 2.1.1 修复单资源恢复操作的 Bucket 校验：重新定位、取消忽略和确认类型变化均检查所在 Bucket，避免接受扫描会排除的隐藏、系统或链接目录。
+
+2.1.2 更新窗口与 Windows 可执行文件的统一图标。
 
 ## 状态与保护
 

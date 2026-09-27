@@ -24,8 +24,8 @@ Tower Tools 是由相互独立的 Windows x64 桌面应用组成的 monorepo。�
 
 ```text
 outputs/
-  launcher/               TowerLauncher.exe、LICENSE、第三方声明和 runtime 文件
-  tools/<application-id>/ Tool.exe、LICENSE、第三方声明和 runtime 文件
+  launcher/               TowerLauncher.exe、app-icon.ico、LICENSE、第三方声明和 runtime 文件
+  tools/<application-id>/ Tool.exe、app-icon.ico、LICENSE、第三方声明和 runtime 文件
   catalog/tools.json      生成的运行时目录
 ```
 

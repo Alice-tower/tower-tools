@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.researchlibrarylauncher"
-version = "1.1.0"
+version = "1.1.1"
 
 kotlin {
     jvmToolchain(21)
@@ -13,6 +13,7 @@ kotlin {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("net.java.dev.jna:jna-platform:5.19.1")
     implementation("org.jetbrains.compose.material:material:1.11.1")
     testImplementation(kotlin("test-junit5"))
 }
@@ -27,8 +28,11 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "ResearchLibraryLauncher"
-            packageVersion = "1.1.0"
+            packageVersion = "1.1.1"
             vendor = "Alice-tower"
+            windows {
+                iconFile.set(project.file("icons/app-icon.ico"))
+            }
         }
     }
 }

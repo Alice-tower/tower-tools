@@ -25,6 +25,7 @@ Tower Tools 是 Alice-tower 面向 Windows 的小型 GUI 工具集合。每个�
 - `template/windows-compose-app/`：新工具的源模板。
 - `launcher/TowerLauncher/`：名为“工具塔”的轻量启动器。
 - `catalog/tools.json`：由生命周期脚本维护的源目录。
+- `branding/`：用户绘制的统一图标原图和缩小后的 Windows 图标资源。
 - `scripts/`：创建、删除、构建和目录同步脚本。
 - `outputs/`：生成的便携应用，已被 Git 忽略。
 - `docs/`：详细的约定和架构说明。
@@ -40,5 +41,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Remove-Tool.ps
 ```
 
 构建会复用仓库本地 `.gradle-user-home/` 缓存，且默认采用增量构建。仅在确实需要干净重建时，才为构建命令传入 `-Clean`。
+
+启动器和所有工具共用 `branding/` 下的图标。新工具由模板创建时会自动带上相同图标；现有应用的可执行文件、窗口和 Windows 任务栏也使用它。便携目录中另有 `app-icon.ico`，可为桌面快捷方式明确指定图标。
 
 新增或删除工具前，请阅读 `docs/tool-lifecycle.md`。启动器的分类、排序与收藏为用户专属设置，存储于 `%LOCALAPPDATA%`；重新构建便携应用不会覆盖这些设置。详见 `docs/launcher-catalog.md`。

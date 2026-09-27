@@ -32,6 +32,14 @@ Kotlin package 与 Gradle group 均等于 Application ID。ID 发布后不得复
 
 小型应用应尽量保持结构简单；只有在功能集需要时才添加架构层。
 
+## 统一图标
+
+启动器及所有工具使用 `branding/` 中的同一张绘制图。保留 `tower-tools-original.png` 作为原图，`app-icon.png` 为 512 × 512 的窗口资源，`app-icon.ico` 包含 16、24、32、48、64、128、256 像素的 Windows 图标。
+
+每个项目在 `src/main/resources/app-icon.png` 放置窗口图标，在 `icons/app-icon.ico` 放置便携 EXE 图标。`template/windows-compose-app` 包含同样的文件和配置，新建工具时由 `New-Tool.ps1` 一起复制。更新统一图标时须同步模板、启动器及现有工具中的两份资源，并重新构建便携输出。
+
+主程序在创建窗口前以稳定 Application ID 设置 Windows AppUserModelID，确保任务栏将窗口归为该应用并显示其图标。新工具不得省略模板中的这一步。
+
 ## Agent 指令
 
 所有项目均继承仓库级 `AGENTS.md`。默认不要在每个工具内创建另一个 `AGENTS.md`；仅当某个工具具有不同于仓库默认规则的长期约束时，才添加工具专属文件。

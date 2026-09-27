@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.naibox"
-version = "1.0.0"
+version = "1.0.1"
 
 kotlin {
     jvmToolchain(21)
@@ -13,6 +13,7 @@ kotlin {
 
 dependencies {
     implementation(compose.desktop.currentOs)
+    implementation("net.java.dev.jna:jna-platform:5.19.1")
     implementation("org.jetbrains.compose.material:material:1.11.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("com.github.usefulness:webp-imageio:0.11.0")
@@ -29,8 +30,11 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "NaiBox"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
             vendor = "Alice-tower"
+            windows {
+                iconFile.set(project.file("icons/app-icon.ico"))
+            }
         }
     }
 }

@@ -6,7 +6,7 @@
                       "projectName":  "ResearchLibraryLauncher",
                       "displayName":  "本地项目启动器",
                       "description":  "登记并启动本地 CMD 项目，可查看 Web 端口状态",
-                      "version":  "1.1.0",
+                      "version":  "1.1.1",
                       "executablePath":  "tools/dev.towertools.researchlibrarylauncher/ResearchLibraryLauncher.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0
@@ -16,7 +16,7 @@
                       "projectName":  "ResourceTagger",
                       "displayName":  "本地资源语义管理器",
                       "description":  "以标签组织本地目录和文件，支持 Bucket 扫描、组合筛选与资源定位。",
-                      "version":  "2.1.1",
+                      "version":  "2.1.2",
                       "executablePath":  "tools/dev.towertools.resourcetagger/ResourceTagger.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0
@@ -26,7 +26,7 @@
                       "projectName":  "ProxyEnvManager",
                       "displayName":  "代理环境变量",
                       "description":  "查看并管理当前用户的 HTTP_PROXY、HTTPS_PROXY、ALL_PROXY 和 NO_PROXY 环境变量。",
-                      "version":  "1.0.13",
+                      "version":  "1.0.14",
                       "executablePath":  "tools/dev.towertools.proxyenvmanager/ProxyEnvManager.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0
@@ -36,7 +36,7 @@
                       "projectName":  "ImageProcessor",
                       "displayName":  "图片裁剪与分割",
                       "description":  "对单张图片进行旋转、比例裁剪和网格分割，预览后按原格式输出。",
-                      "version":  "1.1.1",
+                      "version":  "1.1.2",
                       "executablePath":  "tools/dev.towertools.imageprocessor/ImageProcessor.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0
@@ -46,7 +46,7 @@
                       "projectName":  "NaiBox",
                       "displayName":  "图片元数据解析器",
                       "description":  "本地解析 NovelAI、角色卡及 PNG/JPEG/WebP 图片元数据",
-                      "version":  "1.0.0",
+                      "version":  "1.0.1",
                       "executablePath":  "tools/dev.towertools.naibox/NaiBox.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0
@@ -56,7 +56,7 @@
                       "projectName":  "MediaTranscriber",
                       "displayName":  "影音转写",
                       "description":  "从视频提取 MP3，并使用本地 Whisper CUDA 模型将音频转写为 TXT。",
-                      "version":  "1.0.1",
+                      "version":  "1.0.2",
                       "executablePath":  "tools/dev.towertools.mediatranscriber/MediaTranscriber.exe",
                       "defaultCategory":  "未分类",
                       "defaultOrder":  0

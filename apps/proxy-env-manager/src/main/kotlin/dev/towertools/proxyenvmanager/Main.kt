@@ -8,14 +8,22 @@ import androidx.compose.material.lightColors
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.sun.jna.WString
+import com.sun.jna.platform.win32.Shell32
 import java.awt.EventQueue
 import java.awt.Frame
 
 fun main() {
+    runCatching {
+        val result = Shell32.INSTANCE.SetCurrentProcessExplicitAppUserModelID(WString(AppMetadata.id))
+        check(result.toInt() == 0) { "Windows AppUserModelID setup failed: $result" }
+    }.onFailure { AppLog.logger.warning(it.message) }
+
     val singleInstance = runCatching { SingleInstance.acquire(AppMetadata.id) }
         .onFailure { AppLog.logger.severe("Unable to initialize single-instance control: ${it.message}") }
         .getOrNull()
@@ -26,7 +34,7 @@ fun main() {
     application {
         val state = rememberWindowState(width = 780.dp, height = 480.dp)
 
-        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName) {
+        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName, icon = painterResource("app-icon.png")) {
             DisposableEffect(window) {
                 singleInstance.onActivate {
                     EventQueue.invokeLater {
