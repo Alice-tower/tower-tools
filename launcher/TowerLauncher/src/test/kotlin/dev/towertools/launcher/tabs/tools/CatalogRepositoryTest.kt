@@ -19,8 +19,12 @@ class CatalogRepositoryTest {
             Files.writeString(settings, original)
             val repository = CatalogRepository(root, root.resolve("catalog.json"), settings)
 
+            assertEquals(true, repository.loadCategoryOrderResult().isFailure)
             assertFailsWith<IllegalStateException> {
                 repository.updateOverride("dev.towertools.sample", "网络工具", 10)
+            }
+            assertFailsWith<IllegalStateException> {
+                repository.updateCategoryOrder(listOf("网络工具", "文本工具"))
             }
             assertEquals(original, Files.readString(settings))
         } finally {
@@ -143,6 +147,33 @@ class CatalogRepositoryTest {
             repository.updateOverride("dev.towertools.sample", "网络工具", 1, favorite = false)
             assertEquals(false, repository.load().single().favorite)
             assertEquals(ToolFilter.All, validFilter(ToolFilter.Favorites, repository.load()))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun categoryOrderPersistsWithoutChangingToolOverrides() {
+        val root = createTempDirectory("tower-launcher-category-order-test")
+        try {
+            val catalog = root.resolve("catalog.json")
+            val settings = root.resolve("user-settings.json")
+            Files.writeString(catalog, catalogJson("1.0.0"))
+            val repository = CatalogRepository(root, catalog, settings)
+            repository.updateOverride("dev.towertools.sample", "图片&影音", 7, favorite = true)
+
+            repository.updateCategoryOrder(listOf("系统环境", "图片&影音", "本地管理"))
+            assertEquals(listOf("系统环境", "图片&影音", "本地管理"), repository.loadCategoryOrder())
+            assertEquals("图片&影音", repository.load().single().category)
+            assertEquals(true, repository.load().single().favorite)
+
+            repository.updateOverride("dev.towertools.sample", "本地管理", -1)
+            Files.writeString(catalog, catalogJson("1.1.0"))
+            val reopened = CatalogRepository(root, catalog, settings)
+            assertEquals(listOf("系统环境", "图片&影音", "本地管理"), reopened.loadCategoryOrder())
+            assertEquals(-1, reopened.load().single().order)
+            assertEquals(true, reopened.load().single().favorite)
         } finally {
             root.deleteRecursively()
         }

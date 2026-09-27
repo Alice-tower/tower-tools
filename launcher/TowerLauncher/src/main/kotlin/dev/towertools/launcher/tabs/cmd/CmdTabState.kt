@@ -10,9 +10,6 @@ class CmdTabState(controller: ProjectController) {
         initialProjects.exceptionOrNull()?.let { OperationResult.error("读取项目列表失败：${it.message}") },
     )
     val editingProject = mutableStateOf<LocalProject?>(null)
-    val addingProject = mutableStateOf(false)
     val deletingProject = mutableStateOf<LocalProject?>(null)
     val portStatuses = mutableStateOf<Map<Int, PortStatus>>(emptyMap())
-    val rowResults = mutableStateOf<Map<String, OperationResult>>(emptyMap())
-    val search = mutableStateOf("")
 }

@@ -6,21 +6,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
@@ -32,11 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import java.awt.Frame
 import java.nio.file.Paths
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.swing.JFileChooser
+import dev.towertools.launcher.TabFeedbackBar
+import dev.towertools.launcher.TabPageHeader
 
 private val timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
@@ -49,28 +52,16 @@ fun RepositoryTab(controller: RepositoryController, state: RepositoryTabState, o
     val repositories = discoveredRepositories(locations)
     var settingsOpen by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("仓库", style = MaterialTheme.typography.h5)
-                Text(
-                    "${repositories.size} 个仓库 · ${locations.size} 个扫描路径",
-                    style = MaterialTheme.typography.caption,
-                    color = Color.Gray,
-                )
-            }
-            OutlinedButton(
-                onClick = state::refreshAll,
-                enabled = locations.isNotEmpty() && !isRefreshing,
-            ) { Text(if (isRefreshing) "扫描中" else "刷新") }
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = { settingsOpen = true }) { Text("设置") }
-        }
+    Column(Modifier.fillMaxSize().padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 4.dp)) {
+        TabPageHeader(
+            title = "仓库",
+            subtitle = "${repositories.size} 个仓库 · ${locations.size} 个扫描路径",
+            onRefresh = state::refreshAll,
+            onSettings = { settingsOpen = true },
+            refreshEnabled = locations.isNotEmpty() && !isRefreshing,
+        )
 
-        message?.let {
-            Text(it, color = if (isError) MaterialTheme.colors.error else MaterialTheme.colors.primary)
-        }
-
+        Spacer(Modifier.height(12.dp))
         if (repositories.isEmpty()) {
             Card(Modifier.fillMaxWidth().weight(1f), elevation = 1.dp) {
                 Column(
@@ -104,6 +95,12 @@ fun RepositoryTab(controller: RepositoryController, state: RepositoryTabState, o
                 }
             }
         }
+
+        Spacer(Modifier.height(2.dp))
+        TabFeedbackBar(
+            message = message ?: "在“设置”中管理扫描路径",
+            isError = message != null && isError,
+        )
     }
 
     if (settingsOpen) {
@@ -131,103 +128,113 @@ private fun RepositorySettingsDialog(
         isError = error
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("仓库设置") },
-        text = {
-            Column(
-                Modifier.widthIn(min = 460.dp, max = 620.dp).heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text("扫描路径", style = MaterialTheme.typography.subtitle1)
-                OutlinedTextField(
-                    value = pathInput,
-                    onValueChange = { pathInput = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("目录路径") },
-                    singleLine = true,
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(
-                        onClick = {
-                            runCatching {
-                                JFileChooser().apply {
-                                    dialogTitle = "选择要扫描的目录"
-                                    fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-                                    isAcceptAllFileFilterUsed = false
-                                }.let { chooser ->
-                                    if (chooser.showOpenDialog(owner) == JFileChooser.APPROVE_OPTION) {
-                                        pathInput = chooser.selectedFile.absolutePath
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.width(620.dp),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colors.surface,
+            elevation = 24.dp,
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Text("仓库设置", style = MaterialTheme.typography.h6)
+                Spacer(Modifier.height(16.dp))
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text("扫描路径", style = MaterialTheme.typography.subtitle1)
+                    OutlinedTextField(
+                        value = pathInput,
+                        onValueChange = { pathInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("目录路径") },
+                        singleLine = true,
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        OutlinedButton(
+                            onClick = {
+                                runCatching {
+                                    JFileChooser().apply {
+                                        dialogTitle = "选择要扫描的目录"
+                                        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+                                        isAcceptAllFileFilterUsed = false
+                                    }.let { chooser ->
+                                        if (chooser.showOpenDialog(owner) == JFileChooser.APPROVE_OPTION) {
+                                            pathInput = chooser.selectedFile.absolutePath
+                                        }
                                     }
-                                }
-                            }.onFailure { showMessage("选择目录失败：${it.message}", error = true) }
-                        },
-                        enabled = !isRefreshing,
-                    ) { Text("选择目录") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            runCatching { controller.add(Paths.get(pathInput.trim())) }
-                                .onSuccess {
-                                    locations = it
-                                    pathInput = ""
-                                    showMessage("路径已添加，点击“刷新”开始扫描。")
-                                }
-                                .onFailure { showMessage("添加失败：${it.message}", error = true) }
-                        },
-                        enabled = !isRefreshing && pathInput.isNotBlank(),
-                    ) { Text("添加") }
-                }
-
-                message?.let {
-                    Text(it, color = if (isError) MaterialTheme.colors.error else MaterialTheme.colors.primary)
-                }
-
-                if (locations.isEmpty()) {
-                    Text("还没有添加路径。", color = Color.Gray)
-                } else {
-                    locations.forEach { location ->
-                        Card(Modifier.fillMaxWidth(), elevation = 1.dp) {
-                            Column(
-                                Modifier.fillMaxWidth().padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    SelectionContainer(Modifier.weight(1f)) {
-                                        Text(location.path.toString(), style = MaterialTheme.typography.body2)
+                                }.onFailure { showMessage("选择目录失败：${it.message}", error = true) }
+                            },
+                            enabled = !isRefreshing,
+                        ) { Text("选择目录") }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                runCatching { controller.add(Paths.get(pathInput.trim())) }
+                                    .onSuccess {
+                                        locations = it
+                                        pathInput = ""
+                                        showMessage("路径已添加，点击“刷新”开始扫描。")
                                     }
-                                    TextButton(
-                                        onClick = {
-                                            runCatching { controller.remove(location.id) }
-                                                .onSuccess {
-                                                    locations = it
-                                                    scanFailures = scanFailures - location.id
-                                                    showMessage("已移除扫描路径，原目录未受影响。")
-                                                }
-                                                .onFailure { showMessage("移除失败：${it.message}", error = true) }
+                                    .onFailure { showMessage("添加失败：${it.message}", error = true) }
+                            },
+                            enabled = !isRefreshing && pathInput.isNotBlank(),
+                        ) { Text("添加") }
+                    }
+
+                    message?.let {
+                        Text(it, color = if (isError) MaterialTheme.colors.error else MaterialTheme.colors.primary)
+                    }
+
+                    if (locations.isEmpty()) {
+                        Text("还没有添加路径。", color = Color.Gray)
+                    } else {
+                        locations.forEach { location ->
+                            Card(Modifier.fillMaxWidth(), elevation = 1.dp) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        SelectionContainer(Modifier.weight(1f)) {
+                                            Text(location.path.toString(), style = MaterialTheme.typography.body2)
+                                        }
+                                        TextButton(
+                                            onClick = {
+                                                runCatching { controller.remove(location.id) }
+                                                    .onSuccess {
+                                                        locations = it
+                                                        scanFailures = scanFailures - location.id
+                                                        showMessage("已移除扫描路径，原目录未受影响。")
+                                                    }
+                                                    .onFailure { showMessage("移除失败：${it.message}", error = true) }
+                                            },
+                                            enabled = !isRefreshing,
+                                        ) { Text("移除") }
+                                    }
+                                    val scan = location.scan
+                                    Text(
+                                        when {
+                                            refreshingId == location.id -> "正在扫描…"
+                                            scan == null -> "尚未扫描"
+                                            else -> "${scan.directoryCount} 个子目录 · ${scan.repositoryNames.size} 个仓库 · 上次扫描 ${timeFormat.format(scan.scannedAt.atZone(ZoneId.systemDefault()))}"
                                         },
-                                        enabled = !isRefreshing,
-                                    ) { Text("移除") }
-                                }
-                                val scan = location.scan
-                                Text(
-                                    when {
-                                        refreshingId == location.id -> "正在扫描…"
-                                        scan == null -> "尚未扫描"
-                                        else -> "${scan.directoryCount} 个子目录 · ${scan.repositoryNames.size} 个仓库 · 上次扫描 ${timeFormat.format(scan.scannedAt.atZone(ZoneId.systemDefault()))}"
-                                    },
-                                    style = MaterialTheme.typography.caption,
-                                    color = Color.Gray,
-                                )
-                                scanFailures[location.id]?.let { error ->
-                                    Text("扫描失败：$error", style = MaterialTheme.typography.caption, color = MaterialTheme.colors.error)
+                                        style = MaterialTheme.typography.caption,
+                                        color = Color.Gray,
+                                    )
+                                    scanFailures[location.id]?.let { error ->
+                                        Text("扫描失败：$error", style = MaterialTheme.typography.caption, color = MaterialTheme.colors.error)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("完成") }
+                }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } },
-    )
+        }
+    }
 }

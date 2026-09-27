@@ -50,4 +50,4 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Remove-Tool.ps
 
 启动器和所有工具共用 `branding/` 下的图标。新工具由模板创建时会自动带上相同图标；现有应用的可执行文件、窗口和 Windows 任务栏也使用它。便携目录中另有 `app-icon.ico`，可为桌面快捷方式明确指定图标。
 
-新增或删除独立工具前，请阅读 [工具生命周期](docs/tool-lifecycle.md)；开发 Tab 前，请阅读 [Tab 开发规范](docs/launcher-tabs.md)。工具页的分类、排序与收藏为用户专属设置，存储于 `%LOCALAPPDATA%`；重新构建便携应用不会覆盖这些设置。详见 [启动器目录](docs/launcher-catalog.md)。
+新增或删除独立工具前，请阅读 [工具生命周期](docs/tool-lifecycle.md)；开发 Tab 前，请阅读 [Tab 开发规范](docs/launcher-tabs.md)。工具页的分类、分类拖拽顺序、工具排序与收藏为用户专属设置，存储于 `%LOCALAPPDATA%`；重新构建便携应用不会覆盖这些设置。详见 [启动器目录](docs/launcher-catalog.md)。

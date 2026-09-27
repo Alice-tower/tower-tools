@@ -57,6 +57,25 @@ class CatalogRepository(
         )
     }
 
+    fun loadCategoryOrderResult(): Result<List<String>> = runCatching { readUserSettings().categoryOrder }
+        .onFailure { AppLog.logger.warning("Unable to read launcher category order: ${it.message}") }
+
+    fun loadCategoryOrder(): List<String> = loadCategoryOrderResult().getOrDefault(emptyList())
+
+    fun updateCategoryOrder(visibleOrder: List<String>) {
+        val current = try {
+            readUserSettings()
+        } catch (failure: Exception) {
+            throw IllegalStateException("无法读取现有分类排序，已取消保存以保护原文件：$userSettingsFile", failure)
+        }
+        val ordered = visibleOrder.distinct() + current.categoryOrder.filterNot { it in visibleOrder }.distinct()
+        val updated = current.copy(categoryOrder = ordered)
+        writeSettingsAtomically(
+            userSettingsFile,
+            json.encodeToString(updated) + System.lineSeparator(),
+        )
+    }
+
     private fun readCatalog(): ToolCatalog {
         if (!Files.exists(catalogFile)) return ToolCatalog()
         return runCatching { json.decodeFromString<ToolCatalog>(Files.readString(catalogFile)) }

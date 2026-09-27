@@ -1,6 +1,8 @@
 package dev.towertools.launcher.tabs.cmd
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +26,7 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
@@ -38,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -46,23 +51,19 @@ import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Path
 import java.nio.file.Paths
+import dev.towertools.launcher.TabFeedbackBar
+import dev.towertools.launcher.TabPageHeader
 
 @Composable
 fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
     var projects by state.projects
     var status by state.status
     var editingProject by state.editingProject
-    var addingProject by state.addingProject
     var deletingProject by state.deletingProject
     var portStatuses by state.portStatuses
-    var rowResults by state.rowResults
-    var search by state.search
+    var settingsOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ports = projects.mapNotNull(LocalProject::webPort).distinct()
-    val visibleProjects = projects.filter {
-        search.isBlank() || it.name.contains(search.trim(), ignoreCase = true) ||
-            it.scriptPath.toString().contains(search.trim(), ignoreCase = true)
-    }
 
     LaunchedEffect(ports) {
         while (true) {
@@ -72,38 +73,22 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
     }
 
     fun showResult(result: OperationResult) { status = result }
-    fun showRowResult(id: String, result: OperationResult) {
-        rowResults = rowResults + (id to result)
+    fun showProjectResult(project: LocalProject, result: OperationResult) {
+        showResult(result.copy(message = "${project.name}：${result.message}"))
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("CMD", style = MaterialTheme.typography.h5)
-                Text("${projects.size} 个项目", style = MaterialTheme.typography.caption, color = Color.Gray)
-            }
-            Button(onClick = { addingProject = true }) { Text("添加项目") }
-        }
-
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("搜索名称或路径") },
-                singleLine = true,
-            )
-            Spacer(Modifier.width(8.dp))
-            TextButton(onClick = {
+    Column(modifier = Modifier.fillMaxSize().padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 4.dp)) {
+        TabPageHeader(
+            title = "CMD",
+            subtitle = "${projects.size} 个项目",
+            onRefresh = {
                 runCatching(controller::projects)
                     .onSuccess { projects = it; showResult(OperationResult.info("项目列表已刷新。")) }
                     .onFailure { showResult(OperationResult.error("刷新失败：${it.message}")) }
-            }) { Text("刷新") }
-        }
-        status?.let { result ->
-            Text(result.message, color = if (result.isError) MaterialTheme.colors.error else MaterialTheme.colors.primary)
-        }
-
+            },
+            onSettings = { settingsOpen = true },
+        )
+        Spacer(Modifier.height(12.dp))
         if (projects.isEmpty()) {
             Card(modifier = Modifier.fillMaxWidth().weight(1f), elevation = 1.dp) {
                 Column(
@@ -112,32 +97,22 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text("还没有登记项目", style = MaterialTheme.typography.h6)
-                    Text("点击右上角“添加项目”，填写名称和 .cmd 完整路径。", color = Color.Gray)
+                    Text("点击右上角“设置”添加项目。", color = Color.Gray)
                 }
-            }
-        } else if (visibleProjects.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("没有匹配的项目", style = MaterialTheme.typography.h6)
-                Text("试试其他名称或路径关键词。", color = Color.Gray)
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(visibleProjects, key = LocalProject::id) { project ->
+                items(projects, key = LocalProject::id) { project ->
                     ProjectCard(
                         project = project,
                         portStatus = project.webPort?.let(portStatuses::get),
-                        result = rowResults[project.id],
                         onLaunch = {
                             scope.launch {
-                                showRowResult(project.id, withContext(Dispatchers.IO) { controller.launch(project) })
+                                showProjectResult(project, withContext(Dispatchers.IO) { controller.launch(project) })
                             }
                         },
-                        onBrowser = { showRowResult(project.id, controller.openBrowser(project)) },
-                        onDirectory = { showRowResult(project.id, controller.openProjectDirectory(project)) },
+                        onBrowser = { showProjectResult(project, controller.openBrowser(project)) },
+                        onDirectory = { showProjectResult(project, controller.openProjectDirectory(project)) },
                         onEdit = { editingProject = project },
                         onDelete = { deletingProject = project },
                     )
@@ -145,26 +120,39 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
             }
         }
 
-        Text(
-            "可连接仅表示本机端口接受连接，不代表登记的项目已经运行。",
-            style = MaterialTheme.typography.caption,
-            color = Color.Gray,
+        Spacer(Modifier.height(2.dp))
+        TabFeedbackBar(
+            message = status?.message ?: "可连接仅表示本机端口接受连接，不代表登记的项目已经运行。",
+            isError = status?.isError == true,
         )
     }
 
-    if (addingProject || editingProject != null) {
-        val current = editingProject
+    if (settingsOpen) {
+        CmdSettingsDialog(
+            owner = owner,
+            onDismiss = { settingsOpen = false },
+            onAdd = { name, scriptPath, webPort ->
+                runCatching { controller.saveProject(null, name, scriptPath, webPort) }
+                    .fold(onSuccess = {
+                        projects = it
+                        showResult(OperationResult.info("项目已添加。"))
+                        null
+                    }, onFailure = { it.message ?: "无法添加项目" })
+            },
+        )
+    }
+
+    editingProject?.let { current ->
         ProjectEditorDialog(
             project = current,
             owner = owner,
-            onDismiss = { addingProject = false; editingProject = null },
+            onDismiss = { editingProject = null },
             onSave = { name, scriptPath, webPort ->
-                runCatching { controller.saveProject(current?.id, name, scriptPath, webPort) }
+                runCatching { controller.saveProject(current.id, name, scriptPath, webPort) }
                     .fold(onSuccess = {
                         projects = it
-                        addingProject = false
                         editingProject = null
-                        showResult(OperationResult.info(if (current == null) "项目已添加。" else "项目已更新。"))
+                        showResult(OperationResult.info("项目已更新。"))
                         null
                     }, onFailure = { it.message ?: "无法保存项目" })
             },
@@ -181,7 +169,6 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                     runCatching { controller.deleteProject(project.id) }
                         .onSuccess {
                             projects = it
-                            rowResults = rowResults - project.id
                             deletingProject = null
                             showResult(OperationResult.info("已删除 ${project.name} 的登记。"))
                         }
@@ -197,7 +184,6 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
 private fun ProjectCard(
     project: LocalProject,
     portStatus: PortStatus?,
-    result: OperationResult?,
     onLaunch: () -> Unit,
     onBrowser: () -> Unit,
     onDirectory: () -> Unit,
@@ -253,71 +239,149 @@ private fun ProjectCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            result?.let {
-                Text(
-                    it.message,
-                    style = MaterialTheme.typography.caption,
-                    color = if (it.isError) MaterialTheme.colors.error else MaterialTheme.colors.primary,
-                )
-            }
         }
     }
 }
 
 @Composable
+private fun CmdSettingsDialog(
+    owner: Frame,
+    onDismiss: () -> Unit,
+    onAdd: (String, Path, Int?) -> String?,
+) {
+    val form = remember { ProjectFormState() }
+    var added by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.width(460.dp),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colors.surface,
+            elevation = 24.dp,
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Text("CMD 设置", style = MaterialTheme.typography.h6)
+                Spacer(Modifier.height(16.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.24f)),
+                    color = Color.Transparent,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("添加项目", style = MaterialTheme.typography.subtitle1)
+                        ProjectFormFields(form, owner)
+                        if (added) {
+                            Text("项目已添加，可继续添加。", style = MaterialTheme.typography.caption, color = MaterialTheme.colors.primary)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(enabled = form.canSave, onClick = {
+                                added = false
+                                if (form.submit(onAdd)) {
+                                    form.reset()
+                                    added = true
+                                }
+                            }) { Text("添加项目") }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("完成") }
+                }
+            }
+        }
+    }
+}
+
+private class ProjectFormState(project: LocalProject? = null) {
+    var name by mutableStateOf(project?.name.orEmpty())
+    var scriptPath by mutableStateOf(project?.scriptPath?.toString().orEmpty())
+    var isWebService by mutableStateOf(project?.webPort != null)
+    var portText by mutableStateOf(project?.webPort?.toString().orEmpty())
+    var saveError by mutableStateOf<String?>(null)
+
+    val port: Int? get() = portText.toIntOrNull()
+    val canSave: Boolean get() {
+        val parsedPort = port
+        return name.isNotBlank() && scriptPath.isNotBlank() &&
+            (!isWebService || parsedPort != null && parsedPort in 1..65535)
+    }
+
+    fun submit(onSave: (String, Path, Int?) -> String?): Boolean {
+        val path = runCatching { Paths.get(scriptPath) }.getOrElse {
+            saveError = "启动脚本路径无效：${it.message}"
+            return false
+        }
+        saveError = onSave(name, path, if (isWebService) port else null)
+        return saveError == null
+    }
+
+    fun reset() {
+        name = ""
+        scriptPath = ""
+        isWebService = false
+        portText = ""
+        saveError = null
+    }
+}
+
+@Composable
+private fun ProjectFormFields(form: ProjectFormState, owner: Frame) {
+    val port = form.port
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedTextField(
+            form.name, { form.name = it; form.saveError = null },
+            modifier = Modifier.fillMaxWidth(), label = { Text("项目名称") }, singleLine = true,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                form.scriptPath, { form.scriptPath = it; form.saveError = null }, modifier = Modifier.weight(1f),
+                label = { Text(".cmd 完整路径") }, singleLine = true,
+            )
+            Spacer(Modifier.width(8.dp))
+            OutlinedButton(onClick = {
+                chooseCommandFile(owner, form.scriptPath)?.let { form.scriptPath = it.toString(); form.saveError = null }
+            }) { Text("浏览") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = form.isWebService, onCheckedChange = { form.isWebService = it; form.saveError = null })
+            Text("本地 Web 服务")
+        }
+        if (form.isWebService) {
+            OutlinedTextField(
+                form.portText, { form.portText = it; form.saveError = null }, modifier = Modifier.fillMaxWidth(),
+                label = { Text("占用端口（1–65535）") }, singleLine = true,
+                isError = port == null || port !in 1..65535,
+            )
+            Text("浏览器将打开 http://127.0.0.1:端口/", style = MaterialTheme.typography.caption)
+        }
+        form.saveError?.let { Text(it, color = MaterialTheme.colors.error) }
+    }
+}
+
+@Composable
 private fun ProjectEditorDialog(
-    project: LocalProject?,
+    project: LocalProject,
     owner: Frame,
     onDismiss: () -> Unit,
     onSave: (String, Path, Int?) -> String?,
 ) {
-    var name by remember(project?.id) { mutableStateOf(project?.name.orEmpty()) }
-    var scriptPath by remember(project?.id) { mutableStateOf(project?.scriptPath?.toString().orEmpty()) }
-    var isWebService by remember(project?.id) { mutableStateOf(project?.webPort != null) }
-    var portText by remember(project?.id) { mutableStateOf(project?.webPort?.toString().orEmpty()) }
-    var saveError by remember(project?.id) { mutableStateOf<String?>(null) }
-    val port = portText.toIntOrNull()
-    val canSave = name.isNotBlank() && scriptPath.isNotBlank() && (!isWebService || port != null && port in 1..65535)
+    val form = remember(project.id) { ProjectFormState(project) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (project == null) "添加项目" else "编辑项目") },
+        title = { Text("编辑项目") },
         text = {
-            Column(modifier = Modifier.width(500.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(name, { name = it }, modifier = Modifier.fillMaxWidth(), label = { Text("项目名称") }, singleLine = true)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        scriptPath, { scriptPath = it }, modifier = Modifier.weight(1f),
-                        label = { Text(".cmd 完整路径") }, singleLine = true,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    OutlinedButton(onClick = {
-                        chooseCommandFile(owner, scriptPath)?.let { scriptPath = it.toString() }
-                    }) { Text("浏览") }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = isWebService, onCheckedChange = { isWebService = it })
-                    Text("本地 Web 服务")
-                }
-                if (isWebService) {
-                    OutlinedTextField(
-                        portText, { portText = it }, modifier = Modifier.fillMaxWidth(),
-                        label = { Text("占用端口（1–65535）") }, singleLine = true,
-                        isError = port == null || port !in 1..65535,
-                    )
-                    Text("浏览器将打开 http://127.0.0.1:端口/", style = MaterialTheme.typography.caption)
-                }
-                saveError?.let { Text(it, color = MaterialTheme.colors.error) }
+            Column(modifier = Modifier.width(500.dp)) {
+                ProjectFormFields(form, owner)
             }
         },
         confirmButton = {
-            Button(enabled = canSave, onClick = {
-                val path = runCatching { Paths.get(scriptPath) }.getOrElse {
-                    saveError = "启动脚本路径无效：${it.message}"
-                    return@Button
-                }
-                saveError = onSave(name, path, if (isWebService) port else null)
-            }) { Text("保存") }
+            Button(enabled = form.canSave, onClick = { form.submit(onSave) }) { Text("保存") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )

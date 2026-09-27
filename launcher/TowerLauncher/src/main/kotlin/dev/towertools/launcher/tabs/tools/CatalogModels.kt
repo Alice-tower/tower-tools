@@ -24,6 +24,7 @@ data class CatalogTool(
 @Serializable
 data class UserSettings(
     val tools: Map<String, ToolOverride> = emptyMap(),
+    val categoryOrder: List<String> = emptyList(),
 )
 
 @Serializable

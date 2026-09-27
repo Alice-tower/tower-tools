@@ -1,5 +1,6 @@
 package dev.towertools.launcher.tabs.tools
 
+import dev.towertools.launcher.AppPaths
 import java.awt.Desktop
 import java.io.File
 import java.nio.file.Files
@@ -21,18 +22,13 @@ object ToolActions {
         Desktop.getDesktop().open(tool.executable.parent.toFile())
     }
 
-    fun openLogs(tool: LauncherTool) {
-        val logDirectory = localAppData()
-            .resolve("Alice-tower")
-            .resolve("TowerTools")
-            .resolve(tool.id)
-            .resolve("logs")
-        Files.createDirectories(logDirectory)
-        Desktop.getDesktop().open(logDirectory.toFile())
+    fun openLauncherConfig() {
+        Desktop.getDesktop().open(AppPaths.dataDirectory.toFile())
     }
 
-    private fun localAppData() = System.getenv("LOCALAPPDATA")
-        ?.takeIf(String::isNotBlank)
-        ?.let(java.nio.file.Paths::get)
-        ?: java.nio.file.Paths.get(System.getProperty("user.home"), "AppData", "Local")
+    fun openToolsConfig() {
+        val directory = AppPaths.dataDirectory.parent.resolve("TowerTools")
+        Files.createDirectories(directory)
+        Desktop.getDesktop().open(directory.toFile())
+    }
 }
