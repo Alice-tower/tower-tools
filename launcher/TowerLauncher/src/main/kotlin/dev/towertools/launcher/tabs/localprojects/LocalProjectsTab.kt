@@ -1,7 +1,6 @@
-package dev.towertools.researchlibrarylauncher
+package dev.towertools.launcher.tabs.localprojects
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,13 +23,9 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
-import androidx.compose.material.darkColors
-import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,72 +37,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
-import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.sun.jna.WString
-import com.sun.jna.platform.win32.Shell32
-import java.awt.EventQueue
 import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Path
 import java.nio.file.Paths
 
-fun main() {
-    runCatching {
-        val result = Shell32.INSTANCE.SetCurrentProcessExplicitAppUserModelID(WString(AppMetadata.id))
-        check(result.toInt() == 0) { "Windows AppUserModelID setup failed: $result" }
-    }.onFailure { AppLog.logger.warning(it.message) }
-
-    val singleInstance = runCatching { SingleInstance.acquire(AppMetadata.id) }
-        .onFailure { AppLog.logger.severe("Unable to initialize single-instance control: ${it.message}") }
-        .getOrNull() ?: return
-    val controller = ProjectController()
-
-    application {
-        val state = rememberWindowState(width = 860.dp, height = 600.dp)
-        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName, icon = painterResource("app-icon.png")) {
-            DisposableEffect(window) {
-                singleInstance.onActivate {
-                    EventQueue.invokeLater {
-                        window.extendedState = Frame.NORMAL
-                        window.isVisible = true
-                        window.toFront()
-                        window.requestFocus()
-                    }
-                }
-                onDispose(singleInstance::close)
-            }
-            MaterialTheme(colors = if (isSystemInDarkTheme()) darkColors() else lightColors()) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    ProjectLauncherApp(controller, window)
-                }
-            }
-        }
-    }
-}
-
 @Composable
-private fun ProjectLauncherApp(controller: ProjectController, owner: Frame) {
-    val initialProjects = remember { runCatching(controller::projects) }
-    var projects by remember { mutableStateOf(initialProjects.getOrDefault(emptyList())) }
-    var status by remember {
-        mutableStateOf<OperationResult?>(
-            initialProjects.exceptionOrNull()?.let { OperationResult.error("读取项目列表失败：${it.message}") },
-        )
-    }
-    var editingProject by remember { mutableStateOf<LocalProject?>(null) }
-    var addingProject by remember { mutableStateOf(false) }
-    var deletingProject by remember { mutableStateOf<LocalProject?>(null) }
-    var portStatuses by remember { mutableStateOf<Map<Int, PortStatus>>(emptyMap()) }
-    var rowResults by remember { mutableStateOf<Map<String, OperationResult>>(emptyMap()) }
-    var search by remember { mutableStateOf("") }
+fun LocalProjectsTab(controller: ProjectController, state: LocalProjectsTabState, owner: Frame) {
+    var projects by state.projects
+    var status by state.status
+    var editingProject by state.editingProject
+    var addingProject by state.addingProject
+    var deletingProject by state.deletingProject
+    var portStatuses by state.portStatuses
+    var rowResults by state.rowResults
+    var search by state.search
     val scope = rememberCoroutineScope()
     val ports = projects.mapNotNull(LocalProject::webPort).distinct()
     val visibleProjects = projects.filter {
@@ -130,7 +79,7 @@ private fun ProjectLauncherApp(controller: ProjectController, owner: Frame) {
     Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(AppMetadata.displayName, style = MaterialTheme.typography.h5)
+                Text("本地项目", style = MaterialTheme.typography.h5)
                 Text("${projects.size} 个项目", style = MaterialTheme.typography.caption, color = Color.Gray)
             }
             Button(onClick = { addingProject = true }) { Text("添加项目") }

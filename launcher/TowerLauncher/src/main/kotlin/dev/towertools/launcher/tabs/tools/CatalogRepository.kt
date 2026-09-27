@@ -1,5 +1,7 @@
-package dev.towertools.launcher
+package dev.towertools.launcher.tabs.tools
 
+import dev.towertools.launcher.AppLog
+import dev.towertools.launcher.AppPaths
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files

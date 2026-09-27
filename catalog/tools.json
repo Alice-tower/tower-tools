@@ -2,16 +2,6 @@
     "schemaVersion":  1,
     "tools":  [
                   {
-                      "id":  "dev.towertools.researchlibrarylauncher",
-                      "projectName":  "ResearchLibraryLauncher",
-                      "displayName":  "本地项目启动器",
-                      "description":  "登记并启动本地 CMD 项目，可查看 Web 端口状态",
-                      "version":  "1.1.1",
-                      "executablePath":  "tools/dev.towertools.researchlibrarylauncher/ResearchLibraryLauncher.exe",
-                      "defaultCategory":  "未分类",
-                      "defaultOrder":  0
-                  },
-                  {
                       "id":  "dev.towertools.resourcetagger",
                       "projectName":  "ResourceTagger",
                       "displayName":  "本地资源语义管理器",

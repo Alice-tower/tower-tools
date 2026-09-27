@@ -1,4 +1,4 @@
-package dev.towertools.launcher
+package dev.towertools.launcher.tabs.tools
 
 import kotlinx.serialization.Serializable
 import java.nio.file.Path

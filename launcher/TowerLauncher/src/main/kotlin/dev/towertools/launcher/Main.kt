@@ -5,6 +5,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -14,6 +15,12 @@ import com.sun.jna.WString
 import com.sun.jna.platform.win32.Shell32
 import java.awt.EventQueue
 import java.awt.Frame
+import dev.towertools.launcher.tabs.localprojects.LocalProjectsTab
+import dev.towertools.launcher.tabs.localprojects.LocalProjectsTabState
+import dev.towertools.launcher.tabs.localprojects.ProjectController
+import dev.towertools.launcher.tabs.tools.CatalogRepository
+import dev.towertools.launcher.tabs.tools.ToolsTab
+import dev.towertools.launcher.tabs.tools.ToolsTabState
 
 fun main() {
     runCatching {
@@ -43,7 +50,17 @@ fun main() {
                 onDispose(singleInstance::close)
             }
             MaterialTheme(colors = if (isSystemInDarkTheme()) darkColors() else lightColors()) {
-                LauncherApp(repository)
+                val toolsState = remember { ToolsTabState(repository) }
+                val projectController = remember { ProjectController() }
+                val projectsState = remember { LocalProjectsTabState(projectController) }
+                LauncherApp(
+                    listOf(
+                        LauncherTab(TabId.TOOLS) { ToolsTab(repository, toolsState) },
+                        LauncherTab(TabId.LOCAL_PROJECTS) {
+                            LocalProjectsTab(projectController, projectsState, window)
+                        },
+                    ),
+                )
             }
         }
     }

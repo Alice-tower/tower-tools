@@ -1,8 +1,10 @@
-# 工具生命周期
+# 独立工具生命周期
+
+本文只适用于 `apps/` 下拥有独立 Application ID、GUI 和便携输出的工具。开发启动器内置页面请改看 [Tab 开发规范](launcher-tabs.md)；新 Tab 不运行 `New-Tool.ps1`，也不进入 `catalog/tools.json`。
 
 ## 创建
 
-请按照 `docs/build-environment.md` 中的 PowerShell 调用方式运行 `scripts/New-Tool.ps1`。该脚本会验证标识字段、复制模板、替换显式 token、将 Kotlin 源文件移动到 package path、创建元数据、构建便携目录、同步目录并重新构建启动器。
+请按照 [构建环境](build-environment.md) 中的 PowerShell 调用方式运行 `scripts/New-Tool.ps1`。该脚本会验证标识字段、复制模板、替换显式 token、将 Kotlin 源文件移动到 package path、创建元数据、构建便携目录、同步目录并重新构建启动器。
 
 缺少必填值时，命令会接受交互式输入。Codex 通常会在调用前提出 display name、project name、description 与 ID。
 
@@ -15,6 +17,8 @@
 请使用 `scripts/Remove-Tool.ps1`。该脚本会显示精确的源路径与输出路径；除非明确传入 `-Force`，否则需要确认。它会验证删除目标始终位于仓库内、删除目录条目和便携输出，并重新构建启动器。
 
 删除工具时会刻意保留启动器的用户 override，以便将来恢复同一稳定 ID 时，原分类与排序仍可恢复。
+
+若独立工具迁入启动器 Tab，须先让 Tab 的功能和用户数据兼容通过验证，再用上述脚本退役旧工具。旧 Application ID 不得复用；用户数据的路径或迁移办法由 Tab 规范明确。
 
 ## 失败行为
 

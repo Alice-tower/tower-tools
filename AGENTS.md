@@ -4,6 +4,8 @@
 - 每个工具都必须提供 GUI，即使其核心功能本质上是命令行工作流。
 - 新工具必须位于 `apps/` 下，并通过 `scripts/New-Tool.ps1` 及 `template/windows-compose-app` 创建。
 - 工具必须通过 `scripts/Remove-Tool.ps1` 删除；新增、删除或重命名工具时，必须同步启动器目录并重新构建启动器的便携输出。
+- 用户明确要求“新工具”时创建独立应用；明确要求“新 Tab”时在启动器内开发。需求未说明且两者都合理时先澄清，具体边界见 `docs/launcher-tabs.md`。
+- 新 Tab 的业务代码与测试必须放在启动器对应的 `tabs/<feature>/` 包，通过 `TabId` 和 `LauncherTab` 编译时注册；不为 Tab 创建 `apps/` 项目、`tool.json`、独立 Application ID 或工具目录条目。Tab 内状态、数据和任务由该业务管理。
 - Application ID 必须稳定，并使用 `dev.towertools.*` 命名空间。已发布的 ID 不得变更。
 - 便携输出只能位于 `outputs/`，且不得提交到 Git。
 - 新增或升级第三方依赖时，发布前须核对实际打包组件及其许可，更新 `THIRD_PARTY_NOTICES.md` 和必要的 `third-party/licenses/` 文本；仓库根目录的 MIT `LICENSE` 仅适用于原创代码，不得用它替代第三方许可。
@@ -20,4 +22,5 @@
 - `docs/project-conventions.md`
 - `docs/tool-lifecycle.md`
 - `docs/launcher-catalog.md`
+- `docs/launcher-tabs.md`
 - `docs/build-environment.md`

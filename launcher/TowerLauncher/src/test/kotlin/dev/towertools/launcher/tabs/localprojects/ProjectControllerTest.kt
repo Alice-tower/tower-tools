@@ -1,4 +1,4 @@
-package dev.towertools.researchlibrarylauncher
+package dev.towertools.launcher.tabs.localprojects
 
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -13,6 +13,35 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ProjectControllerTest {
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun existingProjectsPropertiesLoadWithoutConversion() {
+        val root = createTempDirectory("local-project-existing-")
+        try {
+            val projectsFile = root.resolve("projects.properties")
+            val script = root.resolve("existing.cmd")
+            Files.writeString(script, "@echo off")
+            Files.writeString(
+                projectsFile,
+                """
+                count=1
+                project.0.id=existing-project
+                project.0.name=\u73B0\u6709\u9879\u76EE
+                project.0.scriptPath=${script.toString().replace(java.io.File.separatorChar, '/')}
+                project.0.webPort=4173
+                """.trimIndent(),
+            )
+
+            val projects = ProjectRegistry(projectsFile, root.resolve("settings.properties")).load()
+            assertEquals(listOf("existing-project"), projects.map(LocalProject::id))
+            assertEquals("现有项目", projects.single().name)
+            assertEquals(script, projects.single().scriptPath)
+            assertEquals(4173, projects.single().webPort)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     @Test
     fun legacyScriptIsImportedAndPreservedWhenAddingAnotherProject() {

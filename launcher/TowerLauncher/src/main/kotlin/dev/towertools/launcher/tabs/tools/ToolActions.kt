@@ -1,4 +1,4 @@
-package dev.towertools.launcher
+package dev.towertools.launcher.tabs.tools
 
 import java.awt.Desktop
 import java.io.File

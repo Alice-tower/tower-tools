@@ -20,6 +20,10 @@ Gradle Wrapper 下载的网络超时为 120 秒。填充冷缓存仍需要 Inter
 
 若机器阻止未签名的 PowerShell script，请使用 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File` 调用生命周期命令。这只会修改该 child process 的策略。受管 automation sandbox 还可能需要构建权限，因为 Gradle 会运行 Java child process 并写入项目的 build 目录。
 
+## 构建入口
+
+独立工具使用 `scripts/Build-Tool.ps1 -Id <application-id>` 构建；新建或删除工具还须走 [工具生命周期](tool-lifecycle.md) 中的脚本。内置 Tab 属于启动器项目，改动后使用 `scripts/Build-Launcher.ps1` 运行测试并重建 `outputs/launcher/`，不单独生成便携目录。完整发布可使用 `scripts/Build-All.ps1`。Tab 的开发边界见 [Tab 开发规范](launcher-tabs.md)。
+
 ## 便携打包
 
 Compose Desktop 的 `createDistributable` task 会创建 Windows application image，其中包含 `.exe`、应用 library 和精简 Java runtime。它是一个目录而非单文件可执行程序，必须整体复制。

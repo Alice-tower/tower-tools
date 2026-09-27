@@ -1,4 +1,4 @@
-package dev.towertools.launcher
+package dev.towertools.launcher.tabs.tools
 
 import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
