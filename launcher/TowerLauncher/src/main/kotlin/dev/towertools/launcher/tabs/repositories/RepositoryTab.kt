@@ -96,7 +96,7 @@ fun RepositoryTab(controller: RepositoryController, state: RepositoryTabState, o
         Spacer(Modifier.height(2.dp))
         TabFeedbackBar(
             message = if (showStatusMessage) {
-                message ?: "在“设置”中管理扫描路径 · 双击仓库可打开目录"
+                message ?: "双击仓库条目打开仓库目录 · 右键“打开所在目录”打开父目录"
             } else {
                 checkNotNull(remoteFailureMessage)
             },

@@ -210,7 +210,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
 
         Spacer(Modifier.height(2.dp))
         TabFeedbackBar(
-            message = status?.message ?: "可连接仅表示本机端口接受连接，不代表登记的项目已经运行。",
+            message = status?.message ?: "双击 CMD 条目启动项目脚本 · 端口可连接不代表项目已运行",
             isError = status?.isError == true,
         )
     }

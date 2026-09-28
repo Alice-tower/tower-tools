@@ -162,7 +162,7 @@ internal fun ToolsTab(repository: CatalogRepository, state: ToolsTabState) {
 
         Spacer(Modifier.height(2.dp))
         TabFeedbackBar(
-            message = message ?: "已加载 ${tools.size} 个工具 · 双击工具可直接启动",
+            message = message ?: "双击工具条目启动对应工具 · 已加载 ${tools.size} 个工具",
             isError = message != null && messageIsError,
         )
     }
