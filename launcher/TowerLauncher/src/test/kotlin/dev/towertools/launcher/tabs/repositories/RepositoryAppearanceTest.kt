@@ -23,6 +23,7 @@ class RepositoryAppearanceTest {
             val first = controller.add(path)
             controller.refresh(first.single().id)
             controller.updateAppearance(path.resolve("beta"), "工作", -2, true)
+            controller.updateDisplayName(path.resolve("beta"), "  我的仓库  ")
             controller.updateAppearance(path.resolve("alpha"), "工作", 8)
             controller.updateCategoryOrder(listOf("工作"))
             controller.updateAppearance(path.resolve("beta"), "工作", -2, false)
@@ -32,6 +33,8 @@ class RepositoryAppearanceTest {
             val entries = displayRepositories(discoveredRepositories(reopened.locations()), reopened.appearance())
             assertEquals(listOf("beta", "alpha"), entries.map { it.repository.name })
             assertEquals(listOf(true, false), entries.map { it.favorite })
+            assertEquals(listOf("我的仓库", null), entries.map { it.displayName })
+            assertEquals(listOf("我的仓库", "alpha"), entries.map { it.title })
             assertEquals(listOf("工作"), orderedRepositoryCategories(entries, reopened.appearance().categoryOrder))
 
             reopened.remove(first.single().id)
@@ -39,6 +42,15 @@ class RepositoryAppearanceTest {
             reopened.refresh(again.id)
             assertEquals(listOf("beta", "alpha"),
                 displayRepositories(discoveredRepositories(reopened.locations()), reopened.appearance()).map { it.repository.name })
+            assertEquals("我的仓库",
+                displayRepositories(discoveredRepositories(reopened.locations()), reopened.appearance()).first().title)
+
+            reopened.updateDisplayName(path.resolve("beta"), "   ")
+            val cleared = displayRepositories(discoveredRepositories(reopened.locations()), reopened.appearance()).first()
+            assertEquals(null, cleared.displayName)
+            assertEquals("beta", cleared.title)
+            assertEquals("工作", cleared.category)
+            assertEquals(true, cleared.favorite)
         } finally {
             root.deleteRecursively()
         }
@@ -54,6 +66,7 @@ class RepositoryAppearanceTest {
             Files.writeString(file, invalid)
             val store = RepositoryAppearanceStore(file)
             assertFailsWith<IllegalStateException> { store.updateRepository(root.resolve("repo"), "工作", 1) }
+            assertFailsWith<IllegalStateException> { store.updateDisplayName(root.resolve("repo"), "我的仓库") }
             assertFailsWith<IllegalStateException> { store.updateCategoryOrder(listOf("工作")) }
             assertEquals(invalid, Files.readString(file))
         } finally {

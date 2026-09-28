@@ -12,6 +12,7 @@ data class RepositoryAppearance(
     val category: String = UNCATEGORIZED,
     val order: Int = 0,
     val favorite: Boolean = false,
+    val displayName: String? = null,
 )
 
 data class RepositoryAppearanceSettings(
@@ -24,8 +25,10 @@ data class DisplayRepository(
     val category: String,
     val order: Int,
     val favorite: Boolean,
+    val displayName: String? = null,
 ) {
     val key: String get() = repositoryKey(repository.path)
+    val title: String get() = displayName ?: repository.name
 }
 
 internal fun repositoryKey(path: Path): String =
@@ -36,7 +39,7 @@ internal fun displayRepositories(
     settings: RepositoryAppearanceSettings,
 ): List<DisplayRepository> = repositories.map { repository ->
     val appearance = settings.repositories[repositoryKey(repository.path)] ?: RepositoryAppearance()
-    DisplayRepository(repository, appearance.category, appearance.order, appearance.favorite)
+    DisplayRepository(repository, appearance.category, appearance.order, appearance.favorite, appearance.displayName)
 }.sortedWith(compareBy<DisplayRepository> { it.order }
     .thenBy { it.repository.name.lowercase(Locale.ROOT) }
     .thenBy { it.repository.name }
@@ -84,7 +87,9 @@ class RepositoryAppearanceStore(
                 "false" -> false
                 else -> error("仓库 $index 的收藏状态无效")
             }
-            key to RepositoryAppearance(category, order, favorite)
+            val displayName = properties.getProperty(prefix + "displayName")
+                ?.also { require(it.isNotBlank()) { "仓库 $index 的展示名称无效" } }
+            key to RepositoryAppearance(category, order, favorite, displayName)
         }
         require(repositories.size == repositoryCount) { "仓库外观配置包含重复路径" }
         val order = (0 until categoryCount).map { index ->
@@ -98,9 +103,20 @@ class RepositoryAppearanceStore(
     fun updateRepository(path: Path, category: String, order: Int, favorite: Boolean? = null): RepositoryAppearanceSettings {
         val current = loadSafelyForUpdate()
         val key = repositoryKey(path)
+        val existing = current.repositories[key] ?: RepositoryAppearance()
         val updated = current.copy(repositories = current.repositories +
-            (key to RepositoryAppearance(category.trim().ifEmpty { UNCATEGORIZED }, order,
-                favorite ?: current.repositories[key]?.favorite ?: false)))
+            (key to existing.copy(category = category.trim().ifEmpty { UNCATEGORIZED }, order = order,
+                favorite = favorite ?: existing.favorite)))
+        save(updated)
+        return updated
+    }
+
+    fun updateDisplayName(path: Path, displayName: String): RepositoryAppearanceSettings {
+        val current = loadSafelyForUpdate()
+        val key = repositoryKey(path)
+        val existing = current.repositories[key] ?: RepositoryAppearance()
+        val updated = current.copy(repositories = current.repositories +
+            (key to existing.copy(displayName = displayName.trim().takeIf { it.isNotEmpty() })))
         save(updated)
         return updated
     }
@@ -134,6 +150,7 @@ class RepositoryAppearanceStore(
                 properties.setProperty(prefix + "category", appearance.category)
                 properties.setProperty(prefix + "order", appearance.order.toString())
                 properties.setProperty(prefix + "favorite", appearance.favorite.toString())
+                appearance.displayName?.let { properties.setProperty(prefix + "displayName", it) }
             }
             settings.categoryOrder.forEachIndexed { index, category ->
                 properties.setProperty("category.$index", category)

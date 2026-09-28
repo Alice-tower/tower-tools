@@ -3,6 +3,7 @@ package dev.towertools.launcher.tabs.repositories
 import androidx.compose.runtime.mutableStateOf
 import dev.towertools.launcher.AppLog
 import java.awt.EventQueue
+import java.nio.file.Path
 import java.util.logging.Level
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineDispatcher
@@ -35,6 +36,7 @@ class RepositoryTabState(private val controller: RepositoryController) {
         },
     )
     val editingRepository = mutableStateOf<DisplayRepository?>(null)
+    val editingDisplayName = mutableStateOf<DisplayRepository?>(null)
     val saveError = mutableStateOf<String?>(null)
     val message = mutableStateOf(
         initialLocations.exceptionOrNull()?.let { "读取仓库路径失败：${it.message}" }
@@ -45,12 +47,21 @@ class RepositoryTabState(private val controller: RepositoryController) {
     val isRefreshing = mutableStateOf(false)
     val refreshingId = mutableStateOf<String?>(null)
     val scanFailures = mutableStateOf<Map<String, String>>(emptyMap())
+    val remoteFailures = mutableStateOf<Map<String, String>>(emptyMap())
+
+    internal fun recordRemoteFailure(path: Path, reason: String?) {
+        val key = repositoryKey(path)
+        val current = remoteFailures.value
+        val updated = if (reason == null) current - key else current + (key to reason)
+        if (updated != current) remoteFailures.value = updated
+    }
 
     fun refreshAll() {
         val targets = locations.value
         if (isRefreshing.value || targets.isEmpty()) return
         isRefreshing.value = true
         scanFailures.value = emptyMap()
+        remoteFailures.value = emptyMap()
         isError.value = false
         scope.launch {
             var successes = 0

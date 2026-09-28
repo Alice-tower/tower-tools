@@ -453,7 +453,6 @@ private fun ToolRow(
                     runCatching { ToolActions.launch(tool) }
                         .onFailure { onMessage(it.message ?: "启动失败") }
                 },
-                onLongClick = { menuExpanded = true },
             ),
         elevation = 1.dp,
     ) {
@@ -488,13 +487,6 @@ private fun ToolRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.width(12.dp))
-                Button(onClick = {
-                    runCatching { ToolActions.launch(tool) }
-                        .onFailure { onMessage(it.message ?: "启动失败") }
-                }) {
-                    Text("启动")
-                }
             }
 
             Box(Modifier.offset { menuPosition }.size(1.dp)) {

@@ -47,7 +47,16 @@ fun RepositoryTab(controller: RepositoryController, state: RepositoryTabState, o
     val message by state.message
     val isError by state.isError
     val isRefreshing by state.isRefreshing
+    val remoteFailures by state.remoteFailures
     val repositories = discoveredRepositories(locations)
+    val repositoriesByKey = repositories.associateBy { repositoryKey(it.path) }
+    val currentRemoteFailures = remoteFailures.filterKeys(repositoriesByKey::containsKey)
+    val remoteFailureMessage = currentRemoteFailures.entries.firstOrNull()?.let { (key, reason) ->
+        val name = repositoriesByKey.getValue(key).name
+        "读取 $name 的 Git 远端失败：$reason" +
+            if (currentRemoteFailures.size > 1) "；另有 ${currentRemoteFailures.size - 1} 个仓库读取失败" else ""
+    }
+    val showStatusMessage = isRefreshing || isError || remoteFailureMessage == null
     var settingsOpen by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 4.dp)) {
@@ -85,8 +94,12 @@ fun RepositoryTab(controller: RepositoryController, state: RepositoryTabState, o
 
         Spacer(Modifier.height(2.dp))
         TabFeedbackBar(
-            message = message ?: "在“设置”中管理扫描路径 · 双击仓库可打开目录",
-            isError = message != null && isError,
+            message = if (showStatusMessage) {
+                message ?: "在“设置”中管理扫描路径 · 双击仓库可打开目录"
+            } else {
+                checkNotNull(remoteFailureMessage)
+            },
+            isError = if (showStatusMessage) message != null && isError else true,
         )
     }
 

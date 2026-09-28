@@ -113,6 +113,9 @@ class RepositoryController(
     fun updateAppearance(path: Path, category: String, order: Int, favorite: Boolean? = null): RepositoryAppearanceSettings =
         appearanceStore.updateRepository(path, category, order, favorite)
 
+    fun updateDisplayName(path: Path, displayName: String): RepositoryAppearanceSettings =
+        appearanceStore.updateDisplayName(path, displayName)
+
     fun updateCategoryOrder(order: List<String>): RepositoryAppearanceSettings = appearanceStore.updateCategoryOrder(order)
 
     fun add(path: Path): List<RepositoryLocation> {

@@ -343,7 +343,7 @@ private fun ProjectCard(
                 }
                 if (it.buttons.isSecondaryPressed) menuExpanded = true
             }
-            .combinedClickable(onClick = {}, onDoubleClick = onLaunch, onLongClick = { menuExpanded = true }),
+            .combinedClickable(onClick = {}, onDoubleClick = onLaunch),
         elevation = 2.dp,
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -382,10 +382,8 @@ private fun ProjectCard(
                         Text("$port · $label", color = color, style = MaterialTheme.typography.body2)
                     }
                 }
-                Spacer(Modifier.width(12.dp))
-                Button(onClick = onLaunch) { Text("启动") }
                 if (project.webPort != null) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(12.dp))
                     OutlinedButton(onClick = onBrowser) { Text("打开浏览器") }
                 }
             }

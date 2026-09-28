@@ -39,7 +39,7 @@ outputs/
 
 ## 启动器内置 Tab
 
-启动器保持独立的单模块 Compose Desktop 项目。宿主只负责窗口、主题、单实例及 Tab 切换；每个 Tab 的页面、状态、数据和操作位于自己的业务包。当前 `TabId` 枚举和编译时注册表包含“工具”、“CMD”及“仓库”Tab。工具 Tab 使用生成的便携工具目录和用户分类设置；CMD Tab 使用 `TowerLauncher\tabs\cmd` 管理项目配置及独立的分类、排序和收藏设置；仓库 Tab 使用 `TowerLauncher\tabs\repositories` 保存扫描路径、上次结果及独立的仓库分类、排序和收藏设置，在设置对话框管理路径，手动刷新所有路径，并合并显示其直接子目录中的 Git 仓库。新 Tab 不创建 `tool.json` 或工具目录条目。详细边界、数据规则和开发步骤见 [启动器 Tab 开发规范](launcher-tabs.md)。
+启动器保持独立的单模块 Compose Desktop 项目。宿主只负责窗口、主题、单实例及 Tab 切换；每个 Tab 的页面、状态、数据和操作位于自己的业务包。当前 `TabId` 枚举和编译时注册表包含“工具”、“CMD”及“仓库”Tab。工具 Tab 使用生成的便携工具目录和用户分类设置；CMD Tab 使用 `TowerLauncher\tabs\cmd` 管理项目配置及独立的分类、排序和收藏设置；仓库 Tab 使用 `TowerLauncher\tabs\repositories` 保存扫描路径、上次结果及独立的仓库分类、排序、收藏和展示名称设置，在设置对话框管理路径，手动刷新所有路径，并合并显示其直接子目录中的 Git 仓库。仓库卡片在后台读取各仓库的本地 Git 配置，识别 GitHub 远端并控制卡片末端的网页按钮。新 Tab 不创建 `tool.json` 或工具目录条目。详细边界、数据规则和开发步骤见 [启动器 Tab 开发规范](launcher-tabs.md)。
 
 ## 工具内部扩展
 
