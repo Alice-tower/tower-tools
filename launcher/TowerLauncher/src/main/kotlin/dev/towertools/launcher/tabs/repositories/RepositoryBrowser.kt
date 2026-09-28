@@ -129,6 +129,7 @@ internal fun RepositoryBrowser(controller: RepositoryController, state: Reposito
             locations = locations,
             categories = categories,
             selectedFilter = selectedFilter,
+            minimalButtons = settings.minimalButtons,
             onEdit = { saveError = null; editingRepository = it },
             onEditDisplayName = { saveError = null; editingDisplayName = it },
             onRemoteFailure = state::recordRemoteFailure,
@@ -307,6 +308,7 @@ private fun RepositoryList(
     locations: List<RepositoryLocation>,
     categories: List<String>,
     selectedFilter: RepositoryFilter,
+    minimalButtons: Boolean,
     onEdit: (DisplayRepository) -> Unit,
     onEditDisplayName: (DisplayRepository) -> Unit,
     onRemoteFailure: (Path, String?) -> Unit,
@@ -330,13 +332,13 @@ private fun RepositoryList(
                         modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
                 }
                 items(members, key = { it.key }) { item ->
-                    RepositoryRow(item, locations, { onEdit(item) }, { onEditDisplayName(item) },
+                    RepositoryRow(item, locations, minimalButtons, { onEdit(item) }, { onEditDisplayName(item) },
                         { onToggleFavorite(item) }, onRemoteFailure, onMessage)
                 }
             }
         } else {
             items(visible, key = { it.key }) { item ->
-                RepositoryRow(item, locations, { onEdit(item) }, { onEditDisplayName(item) },
+                RepositoryRow(item, locations, minimalButtons, { onEdit(item) }, { onEditDisplayName(item) },
                     { onToggleFavorite(item) }, onRemoteFailure, onMessage)
             }
         }
@@ -346,6 +348,12 @@ private fun RepositoryList(
 private fun openRepositoryDirectory(item: DisplayRepository) {
     require(Files.isDirectory(item.repository.path)) { "找不到仓库目录：${item.repository.path}" }
     Desktop.getDesktop().open(item.repository.path.toFile())
+}
+
+private fun openRepositoryParentDirectory(item: DisplayRepository) {
+    val parent = requireNotNull(item.repository.path.parent) { "仓库目录没有父目录：${item.repository.path}" }
+    require(Files.isDirectory(parent)) { "找不到仓库的父目录：$parent" }
+    Desktop.getDesktop().open(parent.toFile())
 }
 
 private fun openRepositoryDocument(directory: Path, name: String) {
@@ -371,6 +379,7 @@ private data class RepositoryRowMetadata(
 private fun RepositoryRow(
     item: DisplayRepository,
     locations: List<RepositoryLocation>,
+    minimalButtons: Boolean,
     onEdit: () -> Unit,
     onEditDisplayName: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -400,6 +409,35 @@ private fun RepositoryRow(
         onRemoteFailure(item.repository.path, (inspected.remote as? RemoteInspection.Failed)?.reason)
     }
     val githubUrl = (metadata.remote as? RemoteInspection.Loaded)?.remotes?.githubUrl
+    val openReadme: () -> Unit = {
+        runCatching { openRepositoryDocument(item.repository.path, "README.md") }
+            .onFailure { onMessage(it.message ?: "无法打开 README.md") }
+    }
+    val openAgents: () -> Unit = {
+        runCatching { openRepositoryDocument(item.repository.path, "AGENTS.md") }
+            .onFailure { onMessage(it.message ?: "无法打开 AGENTS.md") }
+    }
+    val openGitHub: () -> Unit = {
+        githubUrl?.let { url ->
+            runCatching { Desktop.getDesktop().browse(URI(url)) }
+                .onFailure { onMessage(it.message ?: "无法打开 GitHub 地址") }
+        }
+    }
+    val openVsCode: () -> Unit = {
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val executable = findVsCodeExecutable()
+                        ?: error("未找到 VS Code。请确认已安装；自定义安装请将 Code.exe 所在目录加入 PATH，然后重启启动器。")
+                    openRepositoryInVsCode(executable, item.repository.path)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                onMessage("无法用 VS Code 打开仓库：${error.message ?: "未知错误"}")
+            }
+        }
+    }
     Card(
         modifier = Modifier.fillMaxWidth().height(80.dp)
             .onPointerEvent(PointerEventType.Press) {
@@ -437,64 +475,50 @@ private fun RepositoryRow(
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                OutlinedButton(
-                    enabled = metadata.readme,
-                    onClick = {
-                        runCatching { openRepositoryDocument(item.repository.path, "README.md") }
-                            .onFailure { onMessage(it.message ?: "无法打开 README.md") }
-                    },
-                ) { Text("README") }
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton(
-                    enabled = metadata.agents,
-                    onClick = {
-                        runCatching { openRepositoryDocument(item.repository.path, "AGENTS.md") }
-                            .onFailure { onMessage(it.message ?: "无法打开 AGENTS.md") }
-                    },
-                ) { Text("AGENTS") }
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton(
-                    enabled = githubUrl != null,
-                    onClick = {
-                        githubUrl?.let { url ->
-                            runCatching { Desktop.getDesktop().browse(URI(url)) }
-                                .onFailure { onMessage(it.message ?: "无法打开 GitHub 地址") }
-                        }
-                    },
-                ) {
-                    Icon(GitHubMark, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("GITHUB")
-                }
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            try {
-                                withContext(Dispatchers.IO) {
-                                    val executable = findVsCodeExecutable()
-                                        ?: error("未找到 VS Code。请确认已安装；自定义安装请将 Code.exe 所在目录加入 PATH，然后重启启动器。")
-                                    openRepositoryInVsCode(executable, item.repository.path)
-                                }
-                            } catch (error: CancellationException) {
-                                throw error
-                            } catch (error: Exception) {
-                                onMessage("无法用 VS Code 打开仓库：${error.message ?: "未知错误"}")
-                            }
-                        }
-                    },
-                ) {
-                    Icon(VsCodeMark, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Unspecified)
-                    Spacer(Modifier.width(6.dp))
-                    Text("VS Code")
+                if (minimalButtons) {
+                    IconButton(onClick = openReadme, enabled = metadata.readme,
+                        modifier = Modifier.size(36.dp).semantics { contentDescription = "打开 README.md" }) {
+                        Text("R", style = MaterialTheme.typography.subtitle2)
+                    }
+                    Spacer(Modifier.width(2.dp))
+                    IconButton(onClick = openAgents, enabled = metadata.agents,
+                        modifier = Modifier.size(36.dp).semantics { contentDescription = "打开 AGENTS.md" }) {
+                        Text("A", style = MaterialTheme.typography.subtitle2)
+                    }
+                    Spacer(Modifier.width(2.dp))
+                    IconButton(onClick = openGitHub, enabled = githubUrl != null,
+                        modifier = Modifier.size(36.dp).semantics { contentDescription = "打开 GitHub 仓库网页" }) {
+                        Icon(GitHubMark, contentDescription = null, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(Modifier.width(2.dp))
+                    IconButton(onClick = openVsCode,
+                        modifier = Modifier.size(36.dp).semantics { contentDescription = "用 VS Code 打开仓库" }) {
+                        Icon(VsCodeMark, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Unspecified)
+                    }
+                } else {
+                    OutlinedButton(enabled = metadata.readme, onClick = openReadme) { Text("README") }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(enabled = metadata.agents, onClick = openAgents) { Text("AGENTS") }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(enabled = githubUrl != null, onClick = openGitHub) {
+                        Icon(GitHubMark, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("GITHUB")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(onClick = openVsCode) {
+                        Icon(VsCodeMark, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Unspecified)
+                        Spacer(Modifier.width(6.dp))
+                        Text("VS Code")
+                    }
                 }
             }
             Box(Modifier.offset { menuPosition }.size(1.dp)) {
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(onClick = {
                         menuExpanded = false
-                        runCatching { openRepositoryDirectory(item) }
-                            .onFailure { onMessage(it.message ?: "无法打开仓库目录") }
+                        runCatching { openRepositoryParentDirectory(item) }
+                            .onFailure { onMessage(it.message ?: "无法打开仓库的父目录") }
                     }) { Text("打开所在目录") }
                     DropdownMenuItem(onClick = { menuExpanded = false; onEdit() }) { Text("编辑分类和排序") }
                     DropdownMenuItem(onClick = { menuExpanded = false; onEditDisplayName() }) { Text("设置展示名称") }

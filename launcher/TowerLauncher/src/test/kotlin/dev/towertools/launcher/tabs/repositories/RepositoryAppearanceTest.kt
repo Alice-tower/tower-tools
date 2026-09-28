@@ -7,6 +7,7 @@ import kotlin.io.path.deleteRecursively
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RepositoryAppearanceTest {
@@ -68,7 +69,29 @@ class RepositoryAppearanceTest {
             assertFailsWith<IllegalStateException> { store.updateRepository(root.resolve("repo"), "工作", 1) }
             assertFailsWith<IllegalStateException> { store.updateDisplayName(root.resolve("repo"), "我的仓库") }
             assertFailsWith<IllegalStateException> { store.updateCategoryOrder(listOf("工作")) }
+            assertFailsWith<IllegalStateException> { store.updateMinimalButtons(true) }
             assertEquals(invalid, Files.readString(file))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    @Test
+    fun minimalButtonsDefaultsOffForExistingSettingsAndSurvivesOtherUpdates() {
+        val root = createTempDirectory("repository-minimal-buttons-")
+        try {
+            val file = root.resolve("appearance.properties")
+            Files.writeString(file, "format=1\nrepositoryCount=0\ncategoryCount=0\n")
+            val store = RepositoryAppearanceStore(file)
+            assertFalse(store.load().minimalButtons)
+
+            assertTrue(store.updateMinimalButtons(true).minimalButtons)
+            store.updateRepository(root.resolve("repo"), "工作", 1)
+            assertTrue(RepositoryAppearanceStore(file).load().minimalButtons)
+
+            assertFalse(store.updateMinimalButtons(false).minimalButtons)
+            assertFalse(RepositoryAppearanceStore(file).load().minimalButtons)
         } finally {
             root.deleteRecursively()
         }

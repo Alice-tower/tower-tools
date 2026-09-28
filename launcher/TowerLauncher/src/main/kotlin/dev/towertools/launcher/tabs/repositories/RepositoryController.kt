@@ -118,6 +118,8 @@ class RepositoryController(
 
     fun updateCategoryOrder(order: List<String>): RepositoryAppearanceSettings = appearanceStore.updateCategoryOrder(order)
 
+    fun updateMinimalButtons(enabled: Boolean): RepositoryAppearanceSettings = appearanceStore.updateMinimalButtons(enabled)
+
     fun add(path: Path): List<RepositoryLocation> {
         val normalized = path.toAbsolutePath().normalize()
         require(Files.isDirectory(normalized)) { "找不到目录：$normalized" }

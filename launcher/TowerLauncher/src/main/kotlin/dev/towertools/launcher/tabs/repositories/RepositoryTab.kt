@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.Card
+import androidx.compose.material.Checkbox
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
@@ -122,6 +123,7 @@ private fun RepositorySettingsDialog(
     val isRefreshing by state.isRefreshing
     val refreshingId by state.refreshingId
     var scanFailures by state.scanFailures
+    var appearance by state.appearance
 
     fun showMessage(text: String, error: Boolean = false) {
         message = text
@@ -142,6 +144,25 @@ private fun RepositorySettingsDialog(
                     Modifier.fillMaxWidth().heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = appearance.minimalButtons,
+                            onCheckedChange = { enabled ->
+                                runCatching { controller.updateMinimalButtons(enabled) }
+                                    .onSuccess {
+                                        appearance = it
+                                        showMessage("按钮样式已保存")
+                                    }
+                                    .onFailure { showMessage("保存按钮样式失败：${it.message}", error = true) }
+                            },
+                            enabled = !isRefreshing,
+                        )
+                        Column {
+                            Text("使用极简按钮")
+                            Text("README / AGENTS 显示首字母，GitHub / VS Code 只显示图标",
+                                style = MaterialTheme.typography.caption, color = Color.Gray)
+                        }
+                    }
                     Text("扫描路径", style = MaterialTheme.typography.subtitle1)
                     OutlinedTextField(
                         value = pathInput,

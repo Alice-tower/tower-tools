@@ -18,6 +18,7 @@ data class RepositoryAppearance(
 data class RepositoryAppearanceSettings(
     val repositories: Map<String, RepositoryAppearance> = emptyMap(),
     val categoryOrder: List<String> = emptyList(),
+    val minimalButtons: Boolean = false,
 )
 
 data class DisplayRepository(
@@ -97,7 +98,12 @@ class RepositoryAppearanceStore(
                 ?: error("分类顺序 $index 无效")
         }
         require(order.distinct().size == categoryCount) { "分类顺序包含重复分类" }
-        return RepositoryAppearanceSettings(repositories, order)
+        val minimalButtons = when (properties.getProperty("minimalButtons")) {
+            null, "false" -> false
+            "true" -> true
+            else -> error("仓库按钮样式配置无效")
+        }
+        return RepositoryAppearanceSettings(repositories, order, minimalButtons)
     }
 
     fun updateRepository(path: Path, category: String, order: Int, favorite: Boolean? = null): RepositoryAppearanceSettings {
@@ -129,6 +135,12 @@ class RepositoryAppearanceStore(
         return updated
     }
 
+    fun updateMinimalButtons(enabled: Boolean): RepositoryAppearanceSettings {
+        val updated = loadSafelyForUpdate().copy(minimalButtons = enabled)
+        save(updated)
+        return updated
+    }
+
     private fun loadSafelyForUpdate(): RepositoryAppearanceSettings = try {
         load()
     } catch (failure: Exception) {
@@ -144,6 +156,7 @@ class RepositoryAppearanceStore(
             properties.setProperty("format", "1")
             properties.setProperty("repositoryCount", settings.repositories.size.toString())
             properties.setProperty("categoryCount", settings.categoryOrder.size.toString())
+            properties.setProperty("minimalButtons", settings.minimalButtons.toString())
             settings.repositories.entries.forEachIndexed { index, (key, appearance) ->
                 val prefix = "repository.$index."
                 properties.setProperty(prefix + "path", key)
