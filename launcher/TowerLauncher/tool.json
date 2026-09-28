@@ -3,7 +3,7 @@
   "projectName": "TowerLauncher",
   "displayName": "工具塔",
   "description": "浏览便携工具，管理 CMD 项目并发现 Git 仓库。",
-  "version": "1.4.20",
+  "version": "1.4.21",
   "author": "Alice-tower",
   "uuid": "9d2a4368-292c-4aaf-b11c-8e62ba97fc71",
   "executableName": "TowerLauncher.exe"

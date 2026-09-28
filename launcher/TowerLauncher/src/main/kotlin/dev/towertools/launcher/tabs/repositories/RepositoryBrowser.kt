@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import dev.towertools.launcher.AppLog
@@ -69,6 +70,7 @@ import java.nio.file.Path
 import java.util.logging.Level
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -377,6 +379,7 @@ private fun RepositoryRow(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var menuPosition by remember { mutableStateOf(IntOffset.Zero) }
+    val scope = rememberCoroutineScope()
     val metadata by produceState(RepositoryRowMetadata(), item.repository.path, locations) {
         val inspected = withContext(Dispatchers.IO) {
             val remote = try {
@@ -462,6 +465,28 @@ private fun RepositoryRow(
                     Icon(GitHubMark, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("GITHUB")
+                }
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                withContext(Dispatchers.IO) {
+                                    val executable = findVsCodeExecutable()
+                                        ?: error("未找到 VS Code。请确认已安装；自定义安装请将 Code.exe 所在目录加入 PATH，然后重启启动器。")
+                                    openRepositoryInVsCode(executable, item.repository.path)
+                                }
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (error: Exception) {
+                                onMessage("无法用 VS Code 打开仓库：${error.message ?: "未知错误"}")
+                            }
+                        }
+                    },
+                ) {
+                    Icon(VsCodeMark, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Unspecified)
+                    Spacer(Modifier.width(6.dp))
+                    Text("VS Code")
                 }
             }
             Box(Modifier.offset { menuPosition }.size(1.dp)) {
