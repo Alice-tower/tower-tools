@@ -21,7 +21,7 @@
 3. 把新业务的页面、状态、模型、读写和操作放在 `tabs/<feature>/` 包，测试放在对应的 `src/test/.../tabs/<feature>/` 包。Tab 内部可以按功能再拆文件；不要把业务逻辑堆进 `Main.kt` 或 `LauncherApp.kt`。
 4. Tab 之间不直接读写彼此的状态或配置。“工具”Tab 的分类、收藏和 `CatalogRepository` 只管理独立工具。确有共同界面需求时再提取不含业务含义的组件；新 Tab 可自行决定页面布局，不必套用工具分类侧栏。
 
-目前的 `TOOLS`、`CMD` 与 `REPOSITORIES` 分别管理生成目录与用户工具设置、用户登记的 `.cmd` 项目、用户登记的扫描路径及其上次 Git 仓库扫描结果，各自维护数据与操作边界。
+目前的 `TOOLS`、`CMD` 与 `REPOSITORIES` 分别管理生成目录与用户工具设置、用户登记的 `.cmd` 项目及其分类、排序、收藏设置、用户登记的扫描路径及其上次 Git 仓库扫描结果和独立的仓库分类、排序、收藏设置，各自维护数据与操作边界。
 
 ## 页面状态与后台工作
 
@@ -34,7 +34,7 @@
 
 新 Tab 的数据目录使用 `%LOCALAPPDATA%\Alice-tower\TowerLauncher\tabs\<stable-key>\`；`<stable-key>` 采用稳定的小写短名，并在该 Tab 的路径代码中集中定义。Tab 数据归属启动器，子目录名直接表明对应业务，不借用工具的 Application ID。运行时数据、缓存与日志不得写在源码或 `outputs/` 旁。`user-settings.json` 的 `tools` 字段只属于“工具”Tab，不作为新 Tab 的通用配置容器。
 
-更新启动器不得覆盖用户数据。配置解析失败时应停止写入并显示错误，避免以空数据覆盖原文件。若从独立工具迁入 Tab，先核对原配置格式和路径，迁移过程须可重复执行、不覆盖已有 Tab 配置，并保留旧文件供核对。CMD Tab 当前只读写 `TowerLauncher\tabs\cmd\projects.properties`。
+更新启动器不得覆盖用户数据。配置解析失败时应停止写入并显示错误，避免以空数据覆盖原文件。若从独立工具迁入 Tab，先核对原配置格式和路径，迁移过程须可重复执行、不覆盖已有 Tab 配置，并保留旧文件供核对。CMD Tab 将项目登记与分类偏好分别写入 `TowerLauncher\tabs\cmd\projects.properties` 和 `TowerLauncher\tabs\cmd\appearance.properties`。
 
 ## 开发与交付顺序
 

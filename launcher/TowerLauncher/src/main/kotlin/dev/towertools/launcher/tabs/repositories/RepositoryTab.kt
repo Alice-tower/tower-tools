@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -82,23 +80,12 @@ fun RepositoryTab(controller: RepositoryController, state: RepositoryTabState, o
                 }
             }
         } else {
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(repositories, key = { "${it.locationId}/${it.name}" }) { repository ->
-                    Card(Modifier.fillMaxWidth(), elevation = 2.dp) {
-                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(repository.name, style = MaterialTheme.typography.subtitle1)
-                            SelectionContainer {
-                                Text(repository.path.toString(), style = MaterialTheme.typography.body2, color = Color.Gray)
-                            }
-                        }
-                    }
-                }
-            }
+            RepositoryBrowser(controller, state, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(2.dp))
         TabFeedbackBar(
-            message = message ?: "在“设置”中管理扫描路径",
+            message = message ?: "在“设置”中管理扫描路径 · 双击仓库可打开目录",
             isError = message != null && isError,
         )
     }
@@ -204,6 +191,10 @@ private fun RepositorySettingsDialog(
                                                 runCatching { controller.remove(location.id) }
                                                     .onSuccess {
                                                         locations = it
+                                                        state.selectedFilter.value = validRepositoryFilter(
+                                                            state.selectedFilter.value,
+                                                            displayRepositories(discoveredRepositories(it), state.appearance.value),
+                                                        )
                                                         scanFailures = scanFailures - location.id
                                                         showMessage("已移除扫描路径，原目录未受影响。")
                                                     }

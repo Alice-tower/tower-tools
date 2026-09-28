@@ -6,7 +6,7 @@ Tower Tools 是 Alice-tower 面向 Windows 的小型 GUI 工具集合，使用 K
 
 ## 使用便携应用
 
-运行 `outputs\launcher\TowerLauncher.exe` 可在“工具”Tab 中浏览并启动已打包的工具，在“CMD”Tab 中登记和启动本机 `.cmd` 项目，在“仓库”Tab 的设置中登记目录、手动刷新，并浏览所有已扫描出的 Git 仓库。`outputs/` 下的完整目录可整体携带；每个应用都包含精简的 Java runtime，因此必须整体复制。
+运行 `outputs\launcher\TowerLauncher.exe` 可在“工具”Tab 中浏览并启动已打包的工具，在“CMD”Tab 中登记、分类、排序、收藏和启动本机 `.cmd` 项目，在“仓库”Tab 的设置中登记目录、手动刷新，并按分类、排序和收藏浏览已扫描出的 Git 仓库。三个 Tab 的列表条目等高、收藏爱心对齐；CMD 条目在标题下显示路径，宽度不足时按实际文字宽度省略中间部分并保留文件名末尾，仓库条目不显示详细路径；右键菜单在鼠标点击处打开，前两项依次为“打开所在目录”和“编辑分类和排序”。`outputs/` 下的完整目录可整体携带；每个应用都包含精简的 Java runtime，因此必须整体复制。
 
 当前工具：
 

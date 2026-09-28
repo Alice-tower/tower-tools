@@ -1,28 +1,33 @@
 package dev.towertools.launcher.tabs.cmd
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.Checkbox
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.OutlinedTextField
@@ -37,11 +42,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -53,10 +67,15 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import dev.towertools.launcher.TabFeedbackBar
 import dev.towertools.launcher.TabPageHeader
+import kotlin.math.roundToInt
 
 @Composable
 fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
     var projects by state.projects
+    var appearance by state.appearance
+    var selectedFilter by state.selectedFilter
+    var editingAppearance by state.editingAppearance
+    var appearanceSaveError by state.appearanceSaveError
     var status by state.status
     var editingProject by state.editingProject
     var deletingProject by state.deletingProject
@@ -64,6 +83,8 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
     var settingsOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ports = projects.mapNotNull(LocalProject::webPort).distinct()
+    val displayProjects = displayCmdProjects(projects, appearance)
+    val categories = orderedCmdCategories(displayProjects, appearance.categoryOrder)
 
     LaunchedEffect(ports) {
         while (true) {
@@ -83,7 +104,16 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
             subtitle = "${projects.size} 个项目",
             onRefresh = {
                 runCatching(controller::projects)
-                    .onSuccess { projects = it; showResult(OperationResult.info("项目列表已刷新。")) }
+                    .onSuccess {
+                        projects = it
+                        val appearanceResult = runCatching(controller::appearance)
+                        appearanceResult.onSuccess { loaded -> appearance = loaded }
+                        selectedFilter = validCmdFilter(selectedFilter, displayCmdProjects(projects, appearance))
+                        showResult(appearanceResult.fold(
+                            onSuccess = { OperationResult.info("项目列表已刷新。") },
+                            onFailure = { OperationResult.error("项目列表已刷新，但分类设置读取失败：${it.message}") },
+                        ))
+                    }
                     .onFailure { showResult(OperationResult.error("刷新失败：${it.message}")) }
             },
             onSettings = { settingsOpen = true },
@@ -101,21 +131,79 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                 }
             }
         } else {
-            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(projects, key = LocalProject::id) { project ->
-                    ProjectCard(
-                        project = project,
-                        portStatus = project.webPort?.let(portStatuses::get),
-                        onLaunch = {
-                            scope.launch {
-                                showProjectResult(project, withContext(Dispatchers.IO) { controller.launch(project) })
+            Row(Modifier.weight(1f)) {
+                CmdCategorySidebar(
+                    projects = displayProjects,
+                    categories = categories,
+                    selectedFilter = selectedFilter,
+                    onSelect = { selectedFilter = it },
+                    onOrderChange = { appearance = appearance.copy(categoryOrder = it) },
+                    onOrderCancel = { appearance = appearance.copy(categoryOrder = it) },
+                    onOrderCommit = { order, previous ->
+                        runCatching { controller.updateCategoryOrder(order) }
+                            .onSuccess {
+                                appearance = it
+                                showResult(OperationResult.info("分类顺序已保存。"))
+                            }.onFailure {
+                                appearance = appearance.copy(categoryOrder = previous)
+                                showResult(OperationResult.error(it.message ?: "保存分类顺序失败"))
                             }
-                        },
-                        onBrowser = { showProjectResult(project, controller.openBrowser(project)) },
-                        onDirectory = { showProjectResult(project, controller.openProjectDirectory(project)) },
-                        onEdit = { editingProject = project },
-                        onDelete = { deletingProject = project },
-                    )
+                    },
+                )
+                Spacer(Modifier.width(18.dp))
+                val filter = selectedFilter
+                val visible = when (filter) {
+                    CmdFilter.Favorites -> displayProjects.filter { it.favorite }
+                    CmdFilter.All -> displayProjects
+                    is CmdFilter.Category -> displayProjects.filter { it.category == filter.name }
+                }
+                LazyColumn(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (visible.isEmpty()) {
+                        item { Text("还没有收藏项目。请到“全部”中点击项目左侧的爱心。", color = Color.Gray) }
+                    } else if (selectedFilter == CmdFilter.All) {
+                        categories.forEach { category ->
+                            val members = displayProjects.filter { it.category == category }
+                            item(key = "category:$category") {
+                                Text("$category  ·  ${members.size}", style = MaterialTheme.typography.subtitle1,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
+                            }
+                            items(members, key = { it.project.id }) { item ->
+                                CmdProjectCardItem(item, portStatuses, controller,
+                                    onResult = ::showProjectResult,
+                                    onLaunch = { project -> scope.launch {
+                                        showProjectResult(project, withContext(Dispatchers.IO) { controller.launch(project) })
+                                    } },
+                                    onAppearanceEdit = { appearanceSaveError = null; editingAppearance = it },
+                                    onToggleFavorite = { changed ->
+                                        runCatching { controller.updateAppearance(changed.project.id, changed.category, changed.order, !changed.favorite) }
+                                            .onSuccess {
+                                                appearance = it
+                                                selectedFilter = validCmdFilter(selectedFilter, displayCmdProjects(projects, it))
+                                                showResult(OperationResult.info(if (changed.favorite) "已取消收藏 ${changed.project.name}" else "已收藏 ${changed.project.name}"))
+                                            }.onFailure { showResult(OperationResult.error(it.message ?: "更新收藏状态失败")) }
+                                    },
+                                    onEdit = { editingProject = it }, onDelete = { deletingProject = it })
+                            }
+                        }
+                    } else {
+                        items(visible, key = { it.project.id }) { item ->
+                            CmdProjectCardItem(item, portStatuses, controller,
+                                onResult = ::showProjectResult,
+                                onLaunch = { project -> scope.launch {
+                                    showProjectResult(project, withContext(Dispatchers.IO) { controller.launch(project) })
+                                } },
+                                onAppearanceEdit = { appearanceSaveError = null; editingAppearance = it },
+                                onToggleFavorite = { changed ->
+                                    runCatching { controller.updateAppearance(changed.project.id, changed.category, changed.order, !changed.favorite) }
+                                        .onSuccess {
+                                            appearance = it
+                                            selectedFilter = validCmdFilter(selectedFilter, displayCmdProjects(projects, it))
+                                            showResult(OperationResult.info(if (changed.favorite) "已取消收藏 ${changed.project.name}" else "已收藏 ${changed.project.name}"))
+                                        }.onFailure { showResult(OperationResult.error(it.message ?: "更新收藏状态失败")) }
+                                },
+                                onEdit = { editingProject = it }, onDelete = { deletingProject = it })
+                        }
+                    }
                 }
             }
         }
@@ -135,9 +223,32 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                 runCatching { controller.saveProject(null, name, scriptPath, webPort) }
                     .fold(onSuccess = {
                         projects = it
+                        selectedFilter = CmdFilter.All
                         showResult(OperationResult.info("项目已添加。"))
                         null
                     }, onFailure = { it.message ?: "无法添加项目" })
+            },
+        )
+    }
+
+    editingAppearance?.let { item ->
+        CmdAppearanceDialog(
+            item = item,
+            projects = displayProjects,
+            categories = categories,
+            saveError = appearanceSaveError,
+            onDismiss = { editingAppearance = null },
+            onSave = { category, order ->
+                runCatching { controller.updateAppearance(item.project.id, category, order) }
+                    .onSuccess {
+                        appearance = it
+                        selectedFilter = when (selectedFilter) {
+                            is CmdFilter.Category -> CmdFilter.Category(category)
+                            else -> validCmdFilter(selectedFilter, displayCmdProjects(projects, it))
+                        }
+                        editingAppearance = null
+                        showResult(OperationResult.info("已更新 ${item.project.name} 的分类和排序。"))
+                    }.onFailure { appearanceSaveError = it.message ?: "保存分类和排序失败" }
             },
         )
     }
@@ -169,6 +280,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                     runCatching { controller.deleteProject(project.id) }
                         .onSuccess {
                             projects = it
+                            selectedFilter = validCmdFilter(selectedFilter, displayCmdProjects(it, appearance))
                             deletingProject = null
                             showResult(OperationResult.info("已删除 ${project.name} 的登记。"))
                         }
@@ -181,26 +293,82 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
 }
 
 @Composable
+private fun CmdProjectCardItem(
+    item: DisplayCmdProject,
+    portStatuses: Map<Int, PortStatus>,
+    controller: ProjectController,
+    onResult: (LocalProject, OperationResult) -> Unit,
+    onLaunch: (LocalProject) -> Unit,
+    onAppearanceEdit: (DisplayCmdProject) -> Unit,
+    onToggleFavorite: (DisplayCmdProject) -> Unit,
+    onEdit: (LocalProject) -> Unit,
+    onDelete: (LocalProject) -> Unit,
+) {
+    val project = item.project
+    ProjectCard(
+        project = project,
+        favorite = item.favorite,
+        portStatus = project.webPort?.let(portStatuses::get),
+        onLaunch = { onLaunch(project) },
+        onBrowser = { onResult(project, controller.openBrowser(project)) },
+        onDirectory = { onResult(project, controller.openProjectDirectory(project)) },
+        onAppearanceEdit = { onAppearanceEdit(item) },
+        onToggleFavorite = { onToggleFavorite(item) },
+        onEdit = { onEdit(project) },
+        onDelete = { onDelete(project) },
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@Composable
 private fun ProjectCard(
     project: LocalProject,
+    favorite: Boolean,
     portStatus: PortStatus?,
     onLaunch: () -> Unit,
     onBrowser: () -> Unit,
     onDirectory: () -> Unit,
+    onAppearanceEdit: () -> Unit,
+    onToggleFavorite: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    Card(modifier = Modifier.fillMaxWidth(), elevation = 2.dp) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    project.name,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.subtitle1,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+    var menuPosition by remember { mutableStateOf(IntOffset.Zero) }
+    Card(
+        modifier = Modifier.fillMaxWidth().height(80.dp)
+            .onPointerEvent(PointerEventType.Press) {
+                it.changes.firstOrNull()?.position?.let { position ->
+                    menuPosition = IntOffset(position.x.roundToInt(), position.y.roundToInt())
+                }
+                if (it.buttons.isSecondaryPressed) menuExpanded = true
+            }
+            .combinedClickable(onClick = {}, onDoubleClick = onLaunch, onLongClick = { menuExpanded = true }),
+        elevation = 2.dp,
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxSize().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onToggleFavorite, modifier = Modifier.width(52.dp)) {
+                    Text(
+                        if (favorite) "♥" else "♡",
+                        modifier = Modifier.semantics {
+                            contentDescription = if (favorite) "取消收藏 ${project.name}" else "收藏 ${project.name}"
+                        },
+                        color = if (favorite) {
+                            if (MaterialTheme.colors.isLight) Color(0xFFC62828) else Color(0xFFFF6B81)
+                        } else Color.Gray,
+                        style = MaterialTheme.typography.h5,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        project.name,
+                        style = MaterialTheme.typography.subtitle1,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    CmdPathText(project.scriptPath.toString())
+                }
                 project.webPort?.let { port ->
                     val (label, color) = when (portStatus) {
                         PortStatus.IN_USE -> "可连接" to if (MaterialTheme.colors.isLight) Color(0xFF2E7D32) else Color(0xFF81C784)
@@ -220,26 +388,39 @@ private fun ProjectCard(
                     Spacer(Modifier.width(6.dp))
                     OutlinedButton(onClick = onBrowser) { Text("打开浏览器") }
                 }
-                Spacer(Modifier.width(4.dp))
-                Box {
-                    TextButton(onClick = { menuExpanded = true }) { Text("更多") }
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                        DropdownMenuItem(onClick = { menuExpanded = false; onDirectory() }) { Text("打开目录") }
-                        DropdownMenuItem(onClick = { menuExpanded = false; onEdit() }) { Text("编辑项目") }
-                        DropdownMenuItem(onClick = { menuExpanded = false; onDelete() }) { Text("删除登记") }
-                    }
+            }
+            Box(Modifier.offset { menuPosition }.size(1.dp)) {
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(onClick = { menuExpanded = false; onDirectory() }) { Text("打开所在目录") }
+                    DropdownMenuItem(onClick = { menuExpanded = false; onAppearanceEdit() }) { Text("编辑分类和排序") }
+                    DropdownMenuItem(onClick = { menuExpanded = false; onEdit() }) { Text("编辑项目") }
+                    DropdownMenuItem(onClick = { menuExpanded = false; onDelete() }) { Text("删除登记") }
                 }
             }
-            SelectionContainer {
-                Text(
-                    project.scriptPath.toString(),
-                    style = MaterialTheme.typography.caption,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+        }
+    }
+}
+
+@Composable
+private fun CmdPathText(path: String) {
+    val style = MaterialTheme.typography.caption
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val availableWidth = with(density) { maxWidth.roundToPx() }
+        val visiblePath = remember(path, availableWidth, style, textMeasurer) {
+            middleEllipsizePath(path, availableWidth) { text ->
+                textMeasurer.measure(text, style = style, maxLines = 1, softWrap = false).size.width
             }
         }
+        Text(
+            visiblePath,
+            style = style,
+            color = Color.Gray,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+        )
     }
 }
 

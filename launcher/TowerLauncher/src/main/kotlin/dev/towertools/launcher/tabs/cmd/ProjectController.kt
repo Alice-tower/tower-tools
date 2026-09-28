@@ -32,7 +32,7 @@ data class OperationResult(val message: String, val isError: Boolean = false) {
 enum class PortStatus { IN_USE, AVAILABLE, UNKNOWN }
 
 class ProjectRegistry(
-    private val projectsFile: Path = CmdPaths.dataDirectory.resolve("projects.properties"),
+    internal val projectsFile: Path = CmdPaths.dataDirectory.resolve("projects.properties"),
 ) {
     fun load(): List<LocalProject> {
         if (!Files.exists(projectsFile)) return emptyList()
@@ -78,10 +78,20 @@ class ProjectRegistry(
     }
 }
 
-class ProjectController(registry: ProjectRegistry? = null) {
+class ProjectController(registry: ProjectRegistry? = null, appearanceStore: CmdAppearanceStore? = null) {
     private val registry: ProjectRegistry by lazy { registry ?: ProjectRegistry() }
+    private val appearanceStore: CmdAppearanceStore by lazy {
+        appearanceStore ?: CmdAppearanceStore(this.registry.projectsFile.resolveSibling("appearance.properties"))
+    }
 
     fun projects(): List<LocalProject> = registry.load()
+
+    fun appearance(): CmdAppearanceSettings = appearanceStore.load()
+
+    fun updateAppearance(id: String, category: String, order: Int, favorite: Boolean? = null): CmdAppearanceSettings =
+        appearanceStore.updateProject(id, category, order, favorite)
+
+    fun updateCategoryOrder(order: List<String>): CmdAppearanceSettings = appearanceStore.updateCategoryOrder(order)
 
     fun saveProject(existingId: String?, name: String, scriptPath: Path, webPort: Int?): List<LocalProject> {
         val normalizedName = name.trim()
@@ -109,6 +119,8 @@ class ProjectController(registry: ProjectRegistry? = null) {
         require(current.any { it.id == id }) { "项目已不存在，请刷新列表" }
         val updated = current.filterNot { it.id == id }
         registry.save(updated)
+        runCatching { appearanceStore.removeProject(id) }
+            .onFailure { AppLog.logger.log(Level.WARNING, "Unable to remove deleted project appearance: $id", it) }
         return updated
     }
 

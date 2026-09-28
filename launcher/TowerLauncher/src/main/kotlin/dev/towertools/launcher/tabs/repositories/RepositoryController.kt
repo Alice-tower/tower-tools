@@ -35,7 +35,7 @@ fun discoveredRepositories(locations: List<RepositoryLocation>): List<Discovered
     }.sortedWith(compareBy({ it.name.lowercase() }, { it.path.toString().lowercase() }))
 
 class RepositoryRegistry(
-    private val file: Path = RepositoryPaths.dataDirectory.resolve("locations.properties"),
+    internal val file: Path = RepositoryPaths.dataDirectory.resolve("locations.properties"),
 ) {
     fun load(): List<RepositoryLocation> {
         if (!Files.exists(file)) return emptyList()
@@ -104,8 +104,16 @@ class RepositoryRegistry(
 class RepositoryController(
     private val registry: RepositoryRegistry = RepositoryRegistry(),
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val appearanceStore: RepositoryAppearanceStore = RepositoryAppearanceStore(registry.file.resolveSibling("appearance.properties")),
 ) {
     fun locations(): List<RepositoryLocation> = registry.load()
+
+    fun appearance(): RepositoryAppearanceSettings = appearanceStore.load()
+
+    fun updateAppearance(path: Path, category: String, order: Int, favorite: Boolean? = null): RepositoryAppearanceSettings =
+        appearanceStore.updateRepository(path, category, order, favorite)
+
+    fun updateCategoryOrder(order: List<String>): RepositoryAppearanceSettings = appearanceStore.updateCategoryOrder(order)
 
     fun add(path: Path): List<RepositoryLocation> {
         val normalized = path.toAbsolutePath().normalize()

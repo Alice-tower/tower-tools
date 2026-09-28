@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,10 +57,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Dialog
 import dev.towertools.launcher.TabFeedbackBar
 import dev.towertools.launcher.TabPageHeader
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private const val UNCATEGORIZED = "未分类"
 
@@ -431,12 +435,16 @@ private fun ToolRow(
     onToggleFavorite: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    var menuPosition by remember { mutableStateOf(IntOffset.Zero) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 64.dp)
+            .height(80.dp)
             .onPointerEvent(PointerEventType.Press) {
+                it.changes.firstOrNull()?.position?.let { position ->
+                    menuPosition = IntOffset(position.x.roundToInt(), position.y.roundToInt())
+                }
                 if (it.buttons.isSecondaryPressed) menuExpanded = true
             }
             .combinedClickable(
@@ -451,7 +459,7 @@ private fun ToolRow(
     ) {
         Box {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(end = 12.dp, top = 9.dp, bottom = 9.dp),
+                modifier = Modifier.fillMaxSize().padding(end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onToggleFavorite, modifier = Modifier.width(52.dp)) {
@@ -489,16 +497,18 @@ private fun ToolRow(
                 }
             }
 
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                DropdownMenuItem(onClick = {
-                    menuExpanded = false
-                    onEdit()
-                }) { Text("编辑分类和排序") }
-                DropdownMenuItem(onClick = {
-                    menuExpanded = false
-                    runCatching { ToolActions.openDirectory(tool) }
-                        .onFailure { onMessage(it.message ?: "无法打开目录") }
-                }) { Text("打开所在目录") }
+            Box(Modifier.offset { menuPosition }.size(1.dp)) {
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(onClick = {
+                        menuExpanded = false
+                        runCatching { ToolActions.openDirectory(tool) }
+                            .onFailure { onMessage(it.message ?: "无法打开目录") }
+                    }) { Text("打开所在目录") }
+                    DropdownMenuItem(onClick = {
+                        menuExpanded = false
+                        onEdit()
+                    }) { Text("编辑分类和排序") }
+                }
             }
         }
     }

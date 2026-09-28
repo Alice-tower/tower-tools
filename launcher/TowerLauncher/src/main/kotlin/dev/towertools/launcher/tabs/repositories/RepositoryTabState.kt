@@ -22,13 +22,25 @@ private object AwtDispatcher : CoroutineDispatcher() {
 
 class RepositoryTabState(private val controller: RepositoryController) {
     private val initialLocations = runCatching(controller::locations)
+    private val initialAppearance = runCatching(controller::appearance)
     private val scope = CoroutineScope(SupervisorJob() + AwtDispatcher)
 
     val locations = mutableStateOf(initialLocations.getOrDefault(emptyList()))
-    val message = mutableStateOf(
-        initialLocations.exceptionOrNull()?.let { "读取仓库路径失败：${it.message}" },
+    val appearance = mutableStateOf(initialAppearance.getOrDefault(RepositoryAppearanceSettings()))
+    internal val selectedFilter = mutableStateOf<RepositoryFilter>(
+        if (displayRepositories(discoveredRepositories(locations.value), appearance.value).any { it.favorite }) {
+            RepositoryFilter.Favorites
+        } else {
+            RepositoryFilter.All
+        },
     )
-    val isError = mutableStateOf(initialLocations.isFailure)
+    val editingRepository = mutableStateOf<DisplayRepository?>(null)
+    val saveError = mutableStateOf<String?>(null)
+    val message = mutableStateOf(
+        initialLocations.exceptionOrNull()?.let { "读取仓库路径失败：${it.message}" }
+            ?: initialAppearance.exceptionOrNull()?.let { "读取仓库分类设置失败：${it.message}" },
+    )
+    val isError = mutableStateOf(initialLocations.isFailure || initialAppearance.isFailure)
     val pathInput = mutableStateOf("")
     val isRefreshing = mutableStateOf(false)
     val refreshingId = mutableStateOf<String?>(null)
@@ -56,13 +68,19 @@ class RepositoryTabState(private val controller: RepositoryController) {
                         scanFailures.value = scanFailures.value + (location.id to (error.message ?: "未知错误"))
                     }
                 }
+                val appearanceResult = runCatching { withContext(Dispatchers.IO) { controller.appearance() } }
+                appearanceResult.onSuccess { appearance.value = it }
                 val failures = scanFailures.value.size
-                message.value = if (failures == 0) {
-                    "已刷新 $successes 个扫描路径。"
-                } else {
-                    "已刷新 $successes 个扫描路径，$failures 个失败；请在设置中查看。"
+                selectedFilter.value = validRepositoryFilter(
+                    selectedFilter.value,
+                    displayRepositories(discoveredRepositories(locations.value), appearance.value),
+                )
+                message.value = when {
+                    appearanceResult.isFailure -> "仓库已刷新，但分类设置读取失败：${appearanceResult.exceptionOrNull()?.message ?: "未知错误"}"
+                    failures == 0 -> "已刷新 $successes 个扫描路径。"
+                    else -> "已刷新 $successes 个扫描路径，$failures 个失败；请在设置中查看。"
                 }
-                isError.value = failures > 0
+                isError.value = failures > 0 || appearanceResult.isFailure
             } catch (error: CancellationException) {
                 throw error
             } finally {
