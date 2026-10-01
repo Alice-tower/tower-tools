@@ -44,3 +44,5 @@ Compose Desktop 的 `createDistributable` task 会创建 Windows application ima
 所有项目的 `nativeDistributions.windows.iconFile` 指向项目内的 `icons/app-icon.ico`；运行时主窗口使用 `src/main/resources/app-icon.png`。因此在 IDEA 运行和构建便携目录时会分别显示窗口图标和 EXE 图标。
 仓库构建脚本还会把 `app-icon.ico` 放到每个便携目录根部，供 Windows 快捷方式在图标缓存未更新时明确指定图标来源。
 各应用使用仓库已记录许可的 JNA 5.19.1，在创建窗口前向 Windows 设置稳定 AppUserModelID；这使任务栏使用应用自身的图标。
+
+静读的微信读书页面从 1.2.0 起在 processResources 前运行项目内 prepareWebViewLoader，下载并核对 Microsoft WebView2 SDK 1.0.4258.31，然后只提取 Windows x64 加载器 DLL。缓存位于 outputs/build-dependencies/tower-reader/，无需 .NET SDK 或 C++ 编译器。运行微信读书需要机器已有 WebView2 Runtime；本地书库不创建浏览器，仍可离线使用。

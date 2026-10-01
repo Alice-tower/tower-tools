@@ -41,6 +41,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-All.ps1
 | [图片元数据解析器](apps/nai-box/README.md) | 本地查看图片元数据、AI 生成参数和角色卡内容。 |
 | [影音转写](apps/media-transcriber/README.md) | 从媒体提取 MP3，使用自备的 FFmpeg、CUDA 版 Whisper 和模型转写音频。 |
 | [本地资源语义管理器](apps/resource-tagger/README.md) | 扫描指定目录，以标签和别名整理资源并定位文件，不修改资源本身。 |
+| [静读](apps/tower-reader/README.md) | 离线管理并阅读 TXT、EPUB、PDF，支持单双页、自动保存进度及内嵌微信读书网页版。 |
 
 ## 数据、文档与许可
 
