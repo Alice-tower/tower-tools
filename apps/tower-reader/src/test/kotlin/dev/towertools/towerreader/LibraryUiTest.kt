@@ -66,7 +66,7 @@ class LibraryUiTest {
             fun screenshot(name:String) {
                 rule.waitForIdle()
                 val file=java.io.File("build/test-previews/$name").apply { parentFile.mkdirs() }
-                javax.imageio.ImageIO.write(rule.onRoot().captureToImage().toAwtImage(),"png",file)
+                javax.imageio.ImageIO.write(rule.onAllNodes(isRoot()).onLast().captureToImage().toAwtImage(),"png",file)
             }
             screenshot("library.png")
             rule.onNodeWithText("深色").assertDoesNotExist()
@@ -84,7 +84,15 @@ class LibraryUiTest {
             rule.onNodeWithTag("book-card-$quietId").performMouseInput { click(button=MouseButton.Secondary) }
             rule.onNodeWithText("编辑").performClick()
             rule.onNode(hasSetTextAction() and hasText("书名")).performTextReplacement("窗前的风与月")
-            rule.onNode(hasSetTextAction() and hasText("分类")).performTextReplacement("随笔")
+            rule.onNodeWithText("选择已有分类 ▾").assertDoesNotExist()
+            rule.onNodeWithContentDescription("选择分类").performClick()
+            rule.onNodeWithTag("book-category-option-旅行").performClick()
+            rule.onNodeWithTag("book-category-input").assertTextContains("旅行")
+            rule.onNodeWithContentDescription("选择分类").performClick()
+            rule.onNodeWithTag("book-category-none").performClick()
+            rule.onNodeWithTag("book-category-input").assertTextEquals("分类（可输入新分类）", "未分类")
+            screenshot("book-category-combobox.png")
+            rule.onNodeWithTag("book-category-input").performTextReplacement("随笔")
             rule.onNodeWithText("保存").performClick()
             rule.waitUntil(10000) { controller.books.any { it.title=="窗前的风与月" && it.category=="随笔" } }
             rule.waitForIdle()

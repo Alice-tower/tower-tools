@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "dev.towertools.towerreader"
-version = "1.2.1"
+version = "1.2.2"
 
 kotlin {
     jvmToolchain(21)
@@ -52,7 +52,7 @@ compose.desktop {
         nativeDistributions {
             modules("java.sql", "jdk.unsupported", "jdk.unsupported.desktop", "jdk.jsobject", "jdk.xml.dom", "java.net.http", "java.scripting", "java.management", "jdk.charsets")
             packageName = "TowerReader"
-            packageVersion = "1.2.1"
+            packageVersion = "1.2.2"
             vendor = "Alice-tower"
             windows {
                 iconFile.set(project.file("icons/app-icon.ico"))

@@ -3,7 +3,7 @@
     "projectName":  "TowerReader",
     "displayName":  "静读",
     "description":  "离线阅读 TXT、EPUB 与 PDF，管理本地书库、保存进度，并内嵌微信读书。",
-    "version":  "1.2.1",
+    "version":  "1.2.2",
     "author":  "Alice-tower",
     "uuid":  "ef8da759-c242-4e71-8006-48fee5822520",
     "executableName":  "TowerReader.exe"

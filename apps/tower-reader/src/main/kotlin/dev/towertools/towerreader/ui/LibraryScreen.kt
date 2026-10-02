@@ -20,6 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -145,15 +150,27 @@ fun LibraryScreen(controller:ReaderController,onChooseFiles:()->Unit) {
     var title by remember(book.id) { mutableStateOf(book.title) }
     var category by remember(book.id) { mutableStateOf(book.category) }
     var categoryMenu by remember { mutableStateOf(false) }
+    var categoryWidth by remember { mutableStateOf(0) }
+    var categoryFocused by remember { mutableStateOf(false) }
+    val density=LocalDensity.current
     AlertDialog(onDismissRequest=onDismiss,title={ Text("编辑书籍") },text={
         Column(Modifier.width(390.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
             OutlinedTextField(title,{ title=it },label={ Text("书名") },singleLine=true,modifier=Modifier.fillMaxWidth(),isError=title.isBlank())
-            OutlinedTextField(category,{ category=it },label={ Text("分类") },placeholder={ Text("留空表示未分类；也可输入新分类") },singleLine=true,modifier=Modifier.fillMaxWidth())
-            if(categories.isNotEmpty()) Box {
-                TextButton(onClick={ categoryMenu=true }) { Text("选择已有分类 ▾") }
-                DropdownMenu(categoryMenu,{ categoryMenu=false }) {
-                    DropdownMenuItem(onClick={ category=""; categoryMenu=false }) { Text("未分类") }
-                    categories.forEach { existing -> DropdownMenuItem(onClick={ category=existing; categoryMenu=false }) { Text(existing) } }
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedTextField(if(category.isEmpty() && !categoryFocused) "未分类" else category,{ category=it },label={ Text("分类（可输入新分类）") },
+                    placeholder={ Text("未分类") },singleLine=true,
+                    modifier=Modifier.fillMaxWidth().onSizeChanged { categoryWidth=it.width }.onFocusChanged { categoryFocused=it.isFocused }.testTag("book-category-input"),
+                    trailingIcon={
+                        IconButton(onClick={ categoryMenu=!categoryMenu },modifier=Modifier.semantics { contentDescription="选择分类" }) {
+                            Text(if(categoryMenu) "▴" else "▾",fontSize=22.sp,color=MaterialTheme.colors.onSurface.copy(alpha=.65f))
+                        }
+                    })
+                DropdownMenu(categoryMenu,{ categoryMenu=false },
+                    modifier=Modifier.width(with(density) { categoryWidth.toDp() }).heightIn(max=280.dp)) {
+                    DropdownMenuItem(onClick={ category=""; categoryMenu=false },modifier=Modifier.testTag("book-category-none")) { Text("未分类") }
+                    categories.forEach { existing ->
+                        DropdownMenuItem(onClick={ category=existing; categoryMenu=false },modifier=Modifier.testTag("book-category-option-$existing")) { Text(existing) }
+                    }
                 }
             }
         }
