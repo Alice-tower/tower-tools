@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.proxyenvmanager"
-version = "1.0.14"
+version = "1.0.15"
 
 kotlin {
     jvmToolchain(21)
@@ -28,7 +28,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "ProxyEnvManager"
-            packageVersion = "1.0.14"
+            packageVersion = "1.0.15"
             vendor = "Alice-tower"
             windows {
                 iconFile.set(project.file("icons/app-icon.ico"))

@@ -156,7 +156,7 @@ fun ProxyEnvironmentApp(service: ProxyEnvironmentService) {
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colors.error),
             ) { Text("删除全部当前值") }
             Spacer(Modifier.width(8.dp))
-            Button(
+            TextButton(
                 enabled = configured && environment != null && differentCount > 0,
                 onClick = { execute("已应用全部预设。请重启需要使用新配置的程序。", service::setLocalProxy) },
             ) { Text("应用全部预设") }
