@@ -116,6 +116,9 @@ class RepositoryController(
     fun updateDisplayName(path: Path, displayName: String): RepositoryAppearanceSettings =
         appearanceStore.updateDisplayName(path, displayName)
 
+    fun renameCategory(oldName: String, newName: String): RepositoryAppearanceSettings =
+        appearanceStore.renameCategory(oldName, newName, discoveredRepositories(locations()))
+
     fun updateCategoryOrder(order: List<String>): RepositoryAppearanceSettings = appearanceStore.updateCategoryOrder(order)
 
     fun updateMinimalButtons(enabled: Boolean): RepositoryAppearanceSettings = appearanceStore.updateMinimalButtons(enabled)

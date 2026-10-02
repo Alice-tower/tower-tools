@@ -91,6 +91,9 @@ class ProjectController(registry: ProjectRegistry? = null, appearanceStore: CmdA
     fun updateAppearance(id: String, category: String, order: Int, favorite: Boolean? = null): CmdAppearanceSettings =
         appearanceStore.updateProject(id, category, order, favorite)
 
+    fun renameCategory(oldName: String, newName: String): CmdAppearanceSettings =
+        appearanceStore.renameCategory(oldName, newName, projects())
+
     fun updateCategoryOrder(order: List<String>): CmdAppearanceSettings = appearanceStore.updateCategoryOrder(order)
 
     fun saveProject(existingId: String?, name: String, scriptPath: Path, webPort: Int?): List<LocalProject> {

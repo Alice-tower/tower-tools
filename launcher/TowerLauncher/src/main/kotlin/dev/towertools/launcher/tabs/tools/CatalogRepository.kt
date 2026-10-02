@@ -76,6 +76,38 @@ class CatalogRepository(
         )
     }
 
+    fun renameCategory(oldName: String, newName: String) {
+        val current = try {
+            readUserSettings()
+        } catch (failure: Exception) {
+            throw IllegalStateException("无法读取现有分类设置，已取消保存以保护原文件：$userSettingsFile", failure)
+        }
+        // Use actual defaults; a catalog read failure must not save a partial rename.
+        val catalog = json.decodeFromString<ToolCatalog>(Files.readString(catalogFile))
+        val effectiveCategories = catalog.tools.associate { tool ->
+            tool.id to (current.tools[tool.id]?.category ?: tool.defaultCategory)
+        }
+        val name = newName.trim()
+        val available = effectiveCategories.values + current.tools.values.mapNotNull { it.category } + current.categoryOrder
+        require(name.isNotEmpty()) { "分类名称不能为空" }
+        require(oldName in available) { "该分类已不存在，请刷新后重试" }
+        require(name == oldName || name !in available) { "该分类名称已存在" }
+        if (name == oldName) return
+        val overrides = current.tools.toMutableMap()
+        current.tools.forEach { (id, appearance) ->
+            if (appearance.category == oldName) overrides[id] = appearance.copy(category = name)
+        }
+        effectiveCategories.forEach { (id, category) ->
+            if (category == oldName) overrides[id] = (current.tools[id] ?: ToolOverride()).copy(category = name)
+        }
+        val visible = effectiveCategories.values.distinct()
+        val order = current.categoryOrder.distinct() +
+            visible.filterNot { it in current.categoryOrder }
+                .sortedWith(compareBy<String> { it == "未分类" }.thenBy { it })
+        val updated = current.copy(tools = overrides, categoryOrder = order.map { if (it == oldName) name else it })
+        writeSettingsAtomically(userSettingsFile, json.encodeToString(updated) + System.lineSeparator())
+    }
+
     private fun readCatalog(): ToolCatalog {
         if (!Files.exists(catalogFile)) return ToolCatalog()
         return runCatching { json.decodeFromString<ToolCatalog>(Files.readString(catalogFile)) }

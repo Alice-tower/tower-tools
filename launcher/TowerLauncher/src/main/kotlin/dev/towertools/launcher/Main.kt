@@ -6,15 +6,9 @@ import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import androidx.compose.ui.window.rememberWindowState
 import com.sun.jna.WString
 import com.sun.jna.platform.win32.Shell32
-import java.awt.EventQueue
-import java.awt.Frame
 import dev.towertools.launcher.tabs.cmd.CmdTab
 import dev.towertools.launcher.tabs.cmd.CmdTabState
 import dev.towertools.launcher.tabs.cmd.ProjectController
@@ -39,19 +33,10 @@ fun main() {
     val repository = CatalogRepository.default()
 
     application {
-        val state = rememberWindowState(width = 960.dp, height = 680.dp)
-        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName, icon = painterResource("app-icon.png")) {
-            DisposableEffect(window) {
-                singleInstance.onActivate {
-                    EventQueue.invokeLater {
-                        window.extendedState = Frame.NORMAL
-                        window.isVisible = true
-                        window.toFront()
-                        window.requestFocus()
-                    }
-                }
-                onDispose(singleInstance::close)
-            }
+        DisposableEffect(singleInstance) {
+            onDispose(singleInstance::close)
+        }
+        LauncherWindow(registerActivation = singleInstance::onActivate) {
             MaterialTheme(colors = if (isSystemInDarkTheme()) darkColors() else lightColors()) {
                 val toolsState = remember { ToolsTabState(repository) }
                 val projectController = remember { ProjectController() }

@@ -108,6 +108,29 @@ class CmdAppearanceStore(
         return updated
     }
 
+    fun renameCategory(oldName: String, newName: String, projects: List<LocalProject>): CmdAppearanceSettings {
+        val current = loadSafelyForUpdate()
+        val entries = displayCmdProjects(projects, current)
+        val name = newName.trim()
+        val available = entries.map { it.category } + current.projects.values.map { it.category } + current.categoryOrder
+        require(name.isNotEmpty()) { "分类名称不能为空" }
+        require(oldName in available) { "该分类已不存在，请刷新后重试" }
+        require(name == oldName || name !in available) { "该分类名称已存在" }
+        if (name == oldName) return current
+        val appearances = current.projects.toMutableMap()
+        current.projects.forEach { (id, appearance) ->
+            if (appearance.category == oldName) appearances[id] = appearance.copy(category = name)
+        }
+        entries.filter { it.category == oldName }.forEach { item ->
+            appearances[item.project.id] = (current.projects[item.project.id] ?: CmdProjectAppearance()).copy(category = name)
+        }
+        val order = current.categoryOrder +
+            orderedCmdCategories(entries, current.categoryOrder).filterNot { it in current.categoryOrder }
+        val updated = current.copy(projects = appearances, categoryOrder = order.map { if (it == oldName) name else it })
+        save(updated)
+        return updated
+    }
+
     private fun loadSafelyForUpdate(): CmdAppearanceSettings = try {
         load()
     } catch (failure: Exception) {

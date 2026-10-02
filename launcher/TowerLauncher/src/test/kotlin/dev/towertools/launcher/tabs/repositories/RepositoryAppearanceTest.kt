@@ -13,6 +13,59 @@ import kotlin.test.assertTrue
 class RepositoryAppearanceTest {
     @OptIn(ExperimentalPathApi::class)
     @Test
+    fun renameUpdatesDefaultAndHiddenRepositoriesAndPreservesOtherSettings() {
+        val root = createTempDirectory("repository-category-rename-")
+        try {
+            val file = root.resolve("appearance.properties")
+            val store = RepositoryAppearanceStore(file)
+            val repositories = listOf("default", "custom", "other").map {
+                DiscoveredRepository("location", it, root.resolve(it))
+            }
+            store.updateRepository(root.resolve("custom"), "未分类", -2, true)
+            store.updateDisplayName(root.resolve("custom"), "自定义展示名")
+            store.updateRepository(root.resolve("hidden"), "未分类", 8, true)
+            store.updateRepository(root.resolve("other"), "其他", 4)
+            store.updateMinimalButtons(true)
+            store.updateCategoryOrder(listOf("其他", "未分类", "历史分类"))
+
+            store.renameCategory("未分类", " 新名称 ", repositories)
+            val reopened = RepositoryAppearanceStore(file).load()
+            assertEquals(listOf("其他", "新名称", "历史分类"), reopened.categoryOrder)
+            assertEquals(RepositoryAppearance("新名称"), reopened.repositories[repositoryKey(root.resolve("default"))])
+            assertEquals(RepositoryAppearance("新名称", -2, true, "自定义展示名"),
+                reopened.repositories[repositoryKey(root.resolve("custom"))])
+            assertEquals(RepositoryAppearance("新名称", 8, true), reopened.repositories[repositoryKey(root.resolve("hidden"))])
+            assertEquals(RepositoryAppearance("其他", 4), reopened.repositories[repositoryKey(root.resolve("other"))])
+            assertTrue(reopened.minimalButtons)
+
+            val original = Files.readString(file)
+            assertFailsWith<IllegalArgumentException> { store.renameCategory("新名称", "其他", repositories) }
+            assertFailsWith<IllegalArgumentException> { store.renameCategory("新名称", "历史分类", repositories) }
+            assertFailsWith<IllegalArgumentException> { store.renameCategory("新名称", " ", repositories) }
+            store.renameCategory("新名称", " 新名称 ", repositories)
+            assertEquals(original, Files.readString(file))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    @Test
+    fun renameKeepsUnsavedCategoryOrderInsteadOfSortingByNewName() {
+        val root = createTempDirectory("repository-category-rename-order-")
+        try {
+            val store = RepositoryAppearanceStore(root.resolve("appearance.properties"))
+            val repositories = listOf("first", "second").map { DiscoveredRepository("location", it, root.resolve(it)) }
+            store.updateRepository(root.resolve("first"), "A", 0)
+            store.updateRepository(root.resolve("second"), "B", 0)
+            assertEquals(listOf("Z", "B"), store.renameCategory("A", "Z", repositories).categoryOrder)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    @Test
     fun preferencesSurviveRescanAndReaddedLocation() {
         val root = createTempDirectory("repository-appearance-")
         try {
@@ -70,6 +123,7 @@ class RepositoryAppearanceTest {
             assertFailsWith<IllegalStateException> { store.updateDisplayName(root.resolve("repo"), "我的仓库") }
             assertFailsWith<IllegalStateException> { store.updateCategoryOrder(listOf("工作")) }
             assertFailsWith<IllegalStateException> { store.updateMinimalButtons(true) }
+            assertFailsWith<IllegalStateException> { store.renameCategory("旧分类", "新分类", emptyList()) }
             assertEquals(invalid, Files.readString(file))
         } finally {
             root.deleteRecursively()

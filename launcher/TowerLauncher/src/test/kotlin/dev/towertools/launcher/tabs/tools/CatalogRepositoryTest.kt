@@ -11,6 +11,61 @@ import java.io.IOException
 class CatalogRepositoryTest {
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     @Test
+    fun renameUpdatesDefaultsAndOverridesInOneSaveAndPreservesPreferences() {
+        val root = createTempDirectory("tower-category-rename-")
+        try {
+            val catalog = root.resolve("catalog.json")
+            val settings = root.resolve("user-settings.json")
+            Files.writeString(catalog, catalogJson("1.0.0"))
+            val repository = CatalogRepository(root, catalog, settings)
+            repository.updateOverride("dev.towertools.hidden", "未分类", -8, true)
+            repository.updateOverride("dev.towertools.other", "其他", 12, true)
+            repository.updateCategoryOrder(listOf("其他", "未分类", "历史分类"))
+
+            repository.renameCategory("未分类", "  我的工具  ")
+            val reopened = CatalogRepository(root, catalog, settings)
+            assertEquals("我的工具", reopened.load().single().category)
+            assertEquals(0, reopened.load().single().order)
+            assertEquals(listOf("其他", "我的工具", "历史分类"), reopened.loadCategoryOrder())
+            val persisted = kotlinx.serialization.json.Json.decodeFromString<UserSettings>(Files.readString(settings))
+            assertEquals(ToolOverride("我的工具", -8, true), persisted.tools["dev.towertools.hidden"])
+            assertEquals(ToolOverride("其他", 12, true), persisted.tools["dev.towertools.other"])
+            // A default order stays a default, even after the catalog changes.
+            Files.writeString(catalog, catalogJson("1.1.0").replace("\"defaultOrder\": 0", "\"defaultOrder\": 20"))
+            assertEquals(20, reopened.load().single().order)
+
+            val original = Files.readString(settings)
+            assertFailsWith<IllegalArgumentException> { repository.renameCategory("我的工具", "其他") }
+            assertFailsWith<IllegalArgumentException> { repository.renameCategory("我的工具", "历史分类") }
+            assertFailsWith<IllegalArgumentException> { repository.renameCategory("我的工具", "  ") }
+            repository.renameCategory("我的工具", " 我的工具 ")
+            assertEquals(original, Files.readString(settings))
+            Files.writeString(catalog, "{broken")
+            assertFailsWith<Exception> { repository.renameCategory("我的工具", "新的名称") }
+            assertEquals(original, Files.readString(settings))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
+    fun renamePreservesVisiblePositionBeforeCategoryOrderHasBeenSaved() {
+        val root = createTempDirectory("tower-category-rename-order-")
+        try {
+            val catalog = root.resolve("catalog.json")
+            Files.writeString(catalog, catalogJson("1.0.0").replace("未分类", "A"))
+            val repository = CatalogRepository(root, catalog, root.resolve("settings.json"))
+            repository.renameCategory("A", "Z")
+            assertEquals(listOf("Z"), repository.loadCategoryOrder())
+            assertEquals("Z", repository.load().single().category)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
     fun malformedSettingsAreNotOverwrittenByAnEdit() {
         val root = createTempDirectory("tower-launcher-corrupt-test")
         try {
@@ -20,6 +75,7 @@ class CatalogRepositoryTest {
             val repository = CatalogRepository(root, root.resolve("catalog.json"), settings)
 
             assertEquals(true, repository.loadCategoryOrderResult().isFailure)
+            assertFailsWith<IllegalStateException> { repository.renameCategory("旧分类", "新分类") }
             assertFailsWith<IllegalStateException> {
                 repository.updateOverride("dev.towertools.sample", "网络工具", 10)
             }

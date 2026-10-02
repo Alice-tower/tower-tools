@@ -141,6 +141,29 @@ class RepositoryAppearanceStore(
         return updated
     }
 
+    fun renameCategory(oldName: String, newName: String, repositories: List<DiscoveredRepository>): RepositoryAppearanceSettings {
+        val current = loadSafelyForUpdate()
+        val entries = displayRepositories(repositories, current)
+        val name = newName.trim()
+        val available = entries.map { it.category } + current.repositories.values.map { it.category } + current.categoryOrder
+        require(name.isNotEmpty()) { "分类名称不能为空" }
+        require(oldName in available) { "该分类已不存在，请刷新后重试" }
+        require(name == oldName || name !in available) { "该分类名称已存在" }
+        if (name == oldName) return current
+        val appearances = current.repositories.toMutableMap()
+        current.repositories.forEach { (key, appearance) ->
+            if (appearance.category == oldName) appearances[key] = appearance.copy(category = name)
+        }
+        entries.filter { it.category == oldName }.forEach { item ->
+            appearances[item.key] = (current.repositories[item.key] ?: RepositoryAppearance()).copy(category = name)
+        }
+        val order = current.categoryOrder +
+            orderedRepositoryCategories(entries, current.categoryOrder).filterNot { it in current.categoryOrder }
+        val updated = current.copy(repositories = appearances, categoryOrder = order.map { if (it == oldName) name else it })
+        save(updated)
+        return updated
+    }
+
     private fun loadSafelyForUpdate(): RepositoryAppearanceSettings = try {
         load()
     } catch (failure: Exception) {

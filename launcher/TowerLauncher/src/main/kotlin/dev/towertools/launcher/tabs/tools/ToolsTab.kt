@@ -39,6 +39,8 @@ import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import dev.towertools.launcher.CategoryEditMenu
+import dev.towertools.launcher.CategoryRenameDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +86,7 @@ internal fun validFilter(filter: ToolFilter, tools: List<LauncherTool>): ToolFil
 @Composable
 internal fun ToolsTab(repository: CatalogRepository, state: ToolsTabState) {
     var tools by state.tools
+    var editingCategory by state.editingCategory
     var categoryOrder by state.categoryOrder
     var selectedFilter by state.selectedFilter
     var message by state.message
@@ -124,6 +127,7 @@ internal fun ToolsTab(repository: CatalogRepository, state: ToolsTabState) {
                     tools = tools,
                     categories = categories,
                     selectedFilter = selectedFilter,
+                    onEditCategory = { editingCategory = it },
                     onSelect = { selectedFilter = it },
                     onOrderChange = { categoryOrder = it },
                     onOrderCancel = { categoryOrder = it },
@@ -204,6 +208,24 @@ internal fun ToolsTab(repository: CatalogRepository, state: ToolsTabState) {
         }
     }
 
+    editingCategory?.let { category ->
+        CategoryRenameDialog(
+            category = category,
+            categories = categories,
+            onDismiss = { editingCategory = null },
+            onSave = { name ->
+                runCatching {
+                    repository.renameCategory(category, name)
+                    tools = repository.load()
+                    categoryOrder = repository.loadCategoryOrder()
+                    if (selectedFilter == ToolFilter.Category(category)) selectedFilter = ToolFilter.Category(name)
+                    editingCategory = null
+                    showMessage("分类名称已更新")
+                }.exceptionOrNull()?.let { it.message ?: "保存分类名称失败" }
+            },
+        )
+    }
+
     editingTool?.let { tool ->
         EditToolDialog(
             tool = tool,
@@ -237,6 +259,7 @@ internal class ToolsTabState(repository: CatalogRepository) {
     val selectedFilter = mutableStateOf(defaultFilter(tools.value))
     val message = mutableStateOf(initialOrder.exceptionOrNull()?.let { "分类顺序读取失败：${it.message ?: "未知错误"}" })
     val messageIsError = mutableStateOf(initialOrder.isFailure)
+    val editingCategory = mutableStateOf<String?>(null)
     val editingTool = mutableStateOf<LauncherTool?>(null)
     val saveError = mutableStateOf<String?>(null)
 }
@@ -256,6 +279,7 @@ private fun CategorySidebar(
     tools: List<LauncherTool>,
     categories: List<String>,
     selectedFilter: ToolFilter,
+    onEditCategory: (String) -> Unit,
     onSelect: (ToolFilter) -> Unit,
     onOrderChange: (List<String>) -> Unit,
     onOrderCancel: (List<String>) -> Unit,
@@ -297,6 +321,7 @@ private fun CategorySidebar(
                     count = tools.count { it.category == category },
                     selected = selectedFilter == ToolFilter.Category(category),
                     onClick = { onSelect(ToolFilter.Category(category)) },
+                    onEdit = { onEditCategory(category) },
                     dragging = draggingCategory == category,
                     dragHandleModifier = Modifier.pointerInput(category) {
                         detectDragGestures(
@@ -354,33 +379,36 @@ private fun CategoryItem(
     count: Int,
     selected: Boolean,
     onClick: () -> Unit,
+    onEdit: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     dragging: Boolean = false,
     dragHandleModifier: Modifier? = null,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
-        color = when {
-            selected -> MaterialTheme.colors.primary
-            dragging -> MaterialTheme.colors.primary.copy(alpha = 0.28f)
-            else -> Color.Transparent
-        },
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            dragHandleModifier?.let {
-                Box(modifier = it.width(24.dp).height(24.dp), contentAlignment = Alignment.CenterStart) {
-                    Text("≡", color = if (selected) MaterialTheme.colors.onPrimary else Color.Gray)
+    CategoryEditMenu(onEdit) {
+        Surface(
+            modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+            color = when {
+                selected -> MaterialTheme.colors.primary
+                dragging -> MaterialTheme.colors.primary.copy(alpha = 0.28f)
+                else -> Color.Transparent
+            },
+            shape = MaterialTheme.shapes.small,
+        ) {
+            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                dragHandleModifier?.let {
+                    Box(modifier = it.width(24.dp).height(24.dp), contentAlignment = Alignment.CenterStart) {
+                        Text("≡", color = if (selected) MaterialTheme.colors.onPrimary else Color.Gray)
+                    }
                 }
+                Text(
+                    name,
+                    modifier = Modifier.weight(1f),
+                    color = if (selected) MaterialTheme.colors.onPrimary else MaterialTheme.colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(count.toString(), color = if (selected) MaterialTheme.colors.onPrimary.copy(alpha = 0.8f) else Color.Gray)
             }
-            Text(
-                name,
-                modifier = Modifier.weight(1f),
-                color = if (selected) MaterialTheme.colors.onPrimary else MaterialTheme.colors.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(count.toString(), color = if (selected) MaterialTheme.colors.onPrimary.copy(alpha = 0.8f) else Color.Gray)
         }
     }
 }
@@ -499,7 +527,7 @@ private fun ToolRow(
                     DropdownMenuItem(onClick = {
                         menuExpanded = false
                         onEdit()
-                    }) { Text("编辑分类和排序") }
+                    }) { Text("编辑") }
                 }
             }
         }

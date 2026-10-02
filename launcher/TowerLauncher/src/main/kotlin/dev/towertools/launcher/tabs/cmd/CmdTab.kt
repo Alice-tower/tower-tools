@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.Checkbox
@@ -34,6 +33,7 @@ import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import dev.towertools.launcher.CategoryRenameDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,13 +72,11 @@ import kotlin.math.roundToInt
 @Composable
 fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
     var projects by state.projects
+    var editingCategory by state.editingCategory
     var appearance by state.appearance
     var selectedFilter by state.selectedFilter
     var editingAppearance by state.editingAppearance
-    var appearanceSaveError by state.appearanceSaveError
     var status by state.status
-    var editingProject by state.editingProject
-    var deletingProject by state.deletingProject
     var portStatuses by state.portStatuses
     var settingsOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -136,6 +134,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                     projects = displayProjects,
                     categories = categories,
                     selectedFilter = selectedFilter,
+                    onEditCategory = { editingCategory = it },
                     onSelect = { selectedFilter = it },
                     onOrderChange = { appearance = appearance.copy(categoryOrder = it) },
                     onOrderCancel = { appearance = appearance.copy(categoryOrder = it) },
@@ -173,7 +172,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                                     onLaunch = { project -> scope.launch {
                                         showProjectResult(project, withContext(Dispatchers.IO) { controller.launch(project) })
                                     } },
-                                    onAppearanceEdit = { appearanceSaveError = null; editingAppearance = it },
+                                    onEdit = { editingAppearance = it },
                                     onToggleFavorite = { changed ->
                                         runCatching { controller.updateAppearance(changed.project.id, changed.category, changed.order, !changed.favorite) }
                                             .onSuccess {
@@ -182,7 +181,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                                                 showResult(OperationResult.info(if (changed.favorite) "已取消收藏 ${changed.project.name}" else "已收藏 ${changed.project.name}"))
                                             }.onFailure { showResult(OperationResult.error(it.message ?: "更新收藏状态失败")) }
                                     },
-                                    onEdit = { editingProject = it }, onDelete = { deletingProject = it })
+                                )
                             }
                         }
                     } else {
@@ -192,7 +191,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                                 onLaunch = { project -> scope.launch {
                                     showProjectResult(project, withContext(Dispatchers.IO) { controller.launch(project) })
                                 } },
-                                onAppearanceEdit = { appearanceSaveError = null; editingAppearance = it },
+                                onEdit = { editingAppearance = it },
                                 onToggleFavorite = { changed ->
                                     runCatching { controller.updateAppearance(changed.project.id, changed.category, changed.order, !changed.favorite) }
                                         .onSuccess {
@@ -201,7 +200,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
                                             showResult(OperationResult.info(if (changed.favorite) "已取消收藏 ${changed.project.name}" else "已收藏 ${changed.project.name}"))
                                         }.onFailure { showResult(OperationResult.error(it.message ?: "更新收藏状态失败")) }
                                 },
-                                onEdit = { editingProject = it }, onDelete = { deletingProject = it })
+                            )
                         }
                     }
                 }
@@ -231,63 +230,61 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
         )
     }
 
+    editingCategory?.let { category ->
+        CategoryRenameDialog(
+            category = category,
+            categories = categories,
+            onDismiss = { editingCategory = null },
+            onSave = { name ->
+                runCatching {
+                    appearance = controller.renameCategory(category, name)
+                    if (selectedFilter == CmdFilter.Category(category)) selectedFilter = CmdFilter.Category(name)
+                    editingCategory = null
+                    showResult(OperationResult.info("分类名称已更新。"))
+                }.exceptionOrNull()?.let { it.message ?: "保存分类名称失败" }
+            },
+        )
+    }
+
     editingAppearance?.let { item ->
-        CmdAppearanceDialog(
+        CmdEditDialog(
             item = item,
             projects = displayProjects,
             categories = categories,
-            saveError = appearanceSaveError,
+            owner = owner,
             onDismiss = { editingAppearance = null },
-            onSave = { category, order ->
+            onSaveAppearance = { category, order ->
                 runCatching { controller.updateAppearance(item.project.id, category, order) }
-                    .onSuccess {
+                    .fold(onSuccess = {
                         appearance = it
                         selectedFilter = when (selectedFilter) {
                             is CmdFilter.Category -> CmdFilter.Category(category)
                             else -> validCmdFilter(selectedFilter, displayCmdProjects(projects, it))
                         }
-                        editingAppearance = null
+                        editingAppearance = displayCmdProjects(projects, it).first { project -> project.project.id == item.project.id }
                         showResult(OperationResult.info("已更新 ${item.project.name} 的分类和排序。"))
-                    }.onFailure { appearanceSaveError = it.message ?: "保存分类和排序失败" }
+                        null
+                    }, onFailure = { it.message ?: "保存分类和排序失败" })
             },
-        )
-    }
-
-    editingProject?.let { current ->
-        ProjectEditorDialog(
-            project = current,
-            owner = owner,
-            onDismiss = { editingProject = null },
-            onSave = { name, scriptPath, webPort ->
-                runCatching { controller.saveProject(current.id, name, scriptPath, webPort) }
+            onSaveProject = { name, scriptPath, webPort ->
+                runCatching { controller.saveProject(item.project.id, name, scriptPath, webPort) }
                     .fold(onSuccess = {
                         projects = it
-                        editingProject = null
+                        editingAppearance = displayCmdProjects(it, appearance).first { project -> project.project.id == item.project.id }
                         showResult(OperationResult.info("项目已更新。"))
                         null
                     }, onFailure = { it.message ?: "无法保存项目" })
             },
-        )
-    }
-
-    deletingProject?.let { project ->
-        AlertDialog(
-            onDismissRequest = { deletingProject = null },
-            title = { Text("删除 ${project.name}？") },
-            text = { Text("只会删除启动器中的登记，不会删除 .cmd 文件或项目目录。") },
-            confirmButton = {
-                Button(onClick = {
-                    runCatching { controller.deleteProject(project.id) }
-                        .onSuccess {
-                            projects = it
-                            selectedFilter = validCmdFilter(selectedFilter, displayCmdProjects(it, appearance))
-                            deletingProject = null
-                            showResult(OperationResult.info("已删除 ${project.name} 的登记。"))
-                        }
-                        .onFailure { showResult(OperationResult.error("删除失败：${it.message}")) }
-                }) { Text("删除登记") }
+            onDelete = {
+                runCatching { controller.deleteProject(item.project.id) }
+                    .fold(onSuccess = {
+                        projects = it
+                        selectedFilter = validCmdFilter(selectedFilter, displayCmdProjects(it, appearance))
+                        editingAppearance = null
+                        showResult(OperationResult.info("已删除 ${item.project.name} 的登记。"))
+                        null
+                    }, onFailure = { it.message ?: "删除登记失败" })
             },
-            dismissButton = { TextButton(onClick = { deletingProject = null }) { Text("取消") } },
         )
     }
 }
@@ -299,10 +296,8 @@ private fun CmdProjectCardItem(
     controller: ProjectController,
     onResult: (LocalProject, OperationResult) -> Unit,
     onLaunch: (LocalProject) -> Unit,
-    onAppearanceEdit: (DisplayCmdProject) -> Unit,
+    onEdit: (DisplayCmdProject) -> Unit,
     onToggleFavorite: (DisplayCmdProject) -> Unit,
-    onEdit: (LocalProject) -> Unit,
-    onDelete: (LocalProject) -> Unit,
 ) {
     val project = item.project
     ProjectCard(
@@ -312,10 +307,8 @@ private fun CmdProjectCardItem(
         onLaunch = { onLaunch(project) },
         onBrowser = { onResult(project, controller.openBrowser(project)) },
         onDirectory = { onResult(project, controller.openProjectDirectory(project)) },
-        onAppearanceEdit = { onAppearanceEdit(item) },
+        onEdit = { onEdit(item) },
         onToggleFavorite = { onToggleFavorite(item) },
-        onEdit = { onEdit(project) },
-        onDelete = { onDelete(project) },
     )
 }
 
@@ -328,10 +321,8 @@ private fun ProjectCard(
     onLaunch: () -> Unit,
     onBrowser: () -> Unit,
     onDirectory: () -> Unit,
-    onAppearanceEdit: () -> Unit,
-    onToggleFavorite: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onToggleFavorite: () -> Unit,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var menuPosition by remember { mutableStateOf(IntOffset.Zero) }
@@ -390,9 +381,7 @@ private fun ProjectCard(
             Box(Modifier.offset { menuPosition }.size(1.dp)) {
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(onClick = { menuExpanded = false; onDirectory() }) { Text("打开所在目录") }
-                    DropdownMenuItem(onClick = { menuExpanded = false; onAppearanceEdit() }) { Text("编辑分类和排序") }
-                    DropdownMenuItem(onClick = { menuExpanded = false; onEdit() }) { Text("编辑项目") }
-                    DropdownMenuItem(onClick = { menuExpanded = false; onDelete() }) { Text("删除登记") }
+                    DropdownMenuItem(onClick = { menuExpanded = false; onEdit() }) { Text("编辑") }
                 }
             }
         }
@@ -476,7 +465,7 @@ private fun CmdSettingsDialog(
     }
 }
 
-private class ProjectFormState(project: LocalProject? = null) {
+internal class ProjectFormState(project: LocalProject? = null) {
     var name by mutableStateOf(project?.name.orEmpty())
     var scriptPath by mutableStateOf(project?.scriptPath?.toString().orEmpty())
     var isWebService by mutableStateOf(project?.webPort != null)
@@ -509,30 +498,30 @@ private class ProjectFormState(project: LocalProject? = null) {
 }
 
 @Composable
-private fun ProjectFormFields(form: ProjectFormState, owner: Frame) {
+internal fun ProjectFormFields(form: ProjectFormState, owner: Frame, onChange: () -> Unit = {}) {
     val port = form.port
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedTextField(
-            form.name, { form.name = it; form.saveError = null },
+            form.name, { form.name = it; form.saveError = null; onChange() },
             modifier = Modifier.fillMaxWidth(), label = { Text("项目名称") }, singleLine = true,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
-                form.scriptPath, { form.scriptPath = it; form.saveError = null }, modifier = Modifier.weight(1f),
+                form.scriptPath, { form.scriptPath = it; form.saveError = null; onChange() }, modifier = Modifier.weight(1f),
                 label = { Text(".cmd 完整路径") }, singleLine = true,
             )
             Spacer(Modifier.width(8.dp))
             OutlinedButton(onClick = {
-                chooseCommandFile(owner, form.scriptPath)?.let { form.scriptPath = it.toString(); form.saveError = null }
+                chooseCommandFile(owner, form.scriptPath)?.let { form.scriptPath = it.toString(); form.saveError = null; onChange() }
             }) { Text("浏览") }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = form.isWebService, onCheckedChange = { form.isWebService = it; form.saveError = null })
+            Checkbox(checked = form.isWebService, onCheckedChange = { form.isWebService = it; form.saveError = null; onChange() })
             Text("本地 Web 服务")
         }
         if (form.isWebService) {
             OutlinedTextField(
-                form.portText, { form.portText = it; form.saveError = null }, modifier = Modifier.fillMaxWidth(),
+                form.portText, { form.portText = it; form.saveError = null; onChange() }, modifier = Modifier.fillMaxWidth(),
                 label = { Text("占用端口（1–65535）") }, singleLine = true,
                 isError = port == null || port !in 1..65535,
             )
@@ -540,30 +529,6 @@ private fun ProjectFormFields(form: ProjectFormState, owner: Frame) {
         }
         form.saveError?.let { Text(it, color = MaterialTheme.colors.error) }
     }
-}
-
-@Composable
-private fun ProjectEditorDialog(
-    project: LocalProject,
-    owner: Frame,
-    onDismiss: () -> Unit,
-    onSave: (String, Path, Int?) -> String?,
-) {
-    val form = remember(project.id) { ProjectFormState(project) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("编辑项目") },
-        text = {
-            Column(modifier = Modifier.width(500.dp)) {
-                ProjectFormFields(form, owner)
-            }
-        },
-        confirmButton = {
-            Button(enabled = form.canSave, onClick = { form.submit(onSave) }) { Text("保存") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
-    )
 }
 
 private fun chooseCommandFile(owner: Frame, currentPath: String): Path? {

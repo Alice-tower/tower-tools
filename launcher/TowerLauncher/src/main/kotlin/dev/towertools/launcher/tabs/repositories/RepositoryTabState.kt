@@ -27,6 +27,7 @@ class RepositoryTabState(private val controller: RepositoryController) {
     private val scope = CoroutineScope(SupervisorJob() + AwtDispatcher)
 
     val locations = mutableStateOf(initialLocations.getOrDefault(emptyList()))
+    val editingCategory = mutableStateOf<String?>(null)
     val appearance = mutableStateOf(initialAppearance.getOrDefault(RepositoryAppearanceSettings()))
     internal val selectedFilter = mutableStateOf<RepositoryFilter>(
         if (displayRepositories(discoveredRepositories(locations.value), appearance.value).any { it.favorite }) {
@@ -36,8 +37,6 @@ class RepositoryTabState(private val controller: RepositoryController) {
         },
     )
     val editingRepository = mutableStateOf<DisplayRepository?>(null)
-    val editingDisplayName = mutableStateOf<DisplayRepository?>(null)
-    val saveError = mutableStateOf<String?>(null)
     val message = mutableStateOf(
         initialLocations.exceptionOrNull()?.let { "读取仓库路径失败：${it.message}" }
             ?: initialAppearance.exceptionOrNull()?.let { "读取仓库分类设置失败：${it.message}" },
