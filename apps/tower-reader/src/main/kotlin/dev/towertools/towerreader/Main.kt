@@ -90,10 +90,7 @@ fun main(args: Array<String>) {
                 onDispose { drop.isActive = false; window.removeWindowListener(listener); instance.close() }
             }
             val immersive = fullscreen.active
-            val dark = !weread.selected && controller.active != null && controller.settings.theme == "dark"
-            val palette = if (dark) darkColors(primary = Color(0xffb5caa6), background = Color(0xff1b211e), surface = Color(0xff252d28), onPrimary = Color(0xff18211a))
-                else lightColors(primary = Color(0xff4b664c), secondary = Color(0xff7c8b68), background = Color(0xfff4eedf), surface = Color(0xfffaf5e9), onPrimary = Color.White, onBackground = Color(0xff34382f), onSurface = Color(0xff34382f))
-            MaterialTheme(colors = palette) {
+            MaterialTheme(colors = readerColors(controller.settings.theme)) {
                 Surface(Modifier.fillMaxSize()) {
                     Column {
                         if (!immersive && !closingWindow) Surface(elevation = 1.dp) {
@@ -104,6 +101,8 @@ fun main(args: Array<String>) {
                                 Spacer(Modifier.width(8.dp))
                                 if (weread.selected) Button(onClick = {}, enabled = weread.ready) { Text("微信读书") }
                                 else TextButton(onClick = { controller.flushProgress(); weread.select(true) }, enabled = weread.ready) { Text("微信读书") }
+                                Spacer(Modifier.weight(1f))
+                                ThemeSelector(controller)
                             }
                         }
                         if (controller.closing || closingWindow) {
@@ -150,6 +149,22 @@ fun main(args: Array<String>) {
                     )
                 }
             }
+        }
+    }
+}
+
+internal fun readerColors(theme: String): Colors =
+    if (theme == "dark") darkColors(primary = Color(0xffb5caa6), background = Color(0xff1b211e), surface = Color(0xff252d28), onPrimary = Color(0xff18211a))
+    else lightColors(primary = Color(0xff4b664c), secondary = Color(0xff7c8b68), background = Color(0xfff4eedf), surface = Color(0xfffaf5e9), onPrimary = Color.White, onBackground = Color(0xff34382f), onSurface = Color(0xff34382f))
+
+@Composable
+internal fun ThemeSelector(controller: ReaderController) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("paper" to "暖纸", "dark" to "深色").forEach { (key, label) ->
+            OutlinedButton(
+                onClick = { controller.updateSettings(controller.settings.copy(theme = key)) },
+                enabled = controller.ready && !controller.closing,
+            ) { Text((if (controller.settings.theme == key) "✓ " else "") + label) }
         }
     }
 }

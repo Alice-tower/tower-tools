@@ -264,12 +264,6 @@ private fun ReaderSettingsDialog(controller: ReaderController, onClose: () -> Un
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("阅读设置", style = MaterialTheme.typography.h6)
-                Text("纸张与主题", style = MaterialTheme.typography.subtitle2)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("paper" to "暖纸", "dark" to "深色").forEach { (key, label) ->
-                        OutlinedButton(onClick = { controller.updateSettings(settings.copy(theme = key)) }) { Text((if (settings.theme == key) "✓ " else "") + label) }
-                    }
-                }
                 Text("每屏页数", style = MaterialTheme.typography.subtitle2)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("single" to "单页", "double" to "双页", "auto" to "自动").forEach { (key, label) ->

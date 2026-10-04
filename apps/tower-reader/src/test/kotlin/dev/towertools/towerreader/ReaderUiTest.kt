@@ -102,8 +102,8 @@ class ReaderUiTest {
             }
             screenshot("reader-pdf.png")
             rule.onNodeWithText("阅读设置",substring=false).performClick()
-            rule.onNodeWithText("✓ 暖纸",substring=false).assertExists()
-            rule.onNodeWithText("深色",substring=false).assertExists()
+            rule.onNodeWithText("✓ 暖纸",substring=false).assertDoesNotExist()
+            rule.onNodeWithText("深色",substring=false).assertDoesNotExist()
             rule.onNodeWithText("浅色",substring=true).assertDoesNotExist()
             rule.onNodeWithText("完成",substring=false).performClick()
             rule.onNodeWithText("全屏",substring=false).performClick()

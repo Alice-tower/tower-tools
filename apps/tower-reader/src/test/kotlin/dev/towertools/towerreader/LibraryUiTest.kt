@@ -1,12 +1,10 @@
 package dev.towertools.towerreader
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.material.lightColors
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -56,8 +54,14 @@ class LibraryUiTest {
         val controller=edt { ReaderController(data) }
         try {
             rule.setContent {
-                val palette=lightColors(primary=Color(0xff4b664c),secondary=Color(0xff7c8b68),background=Color(0xfff4eedf),surface=Color(0xfffaf5e9),onSurface=Color(0xff34382f),onBackground=Color(0xff34382f),onPrimary=Color.White)
-                MaterialTheme(colors=palette) { Surface { Box(Modifier.size(1180.dp,820.dp)) { LibraryScreen(controller,{}) } } }
+                MaterialTheme(colors=readerColors(controller.settings.theme)) {
+                    Surface {
+                        Column(Modifier.size(1180.dp,820.dp)) {
+                            ThemeSelector(controller)
+                            LibraryScreen(controller,{})
+                        }
+                    }
+                }
             }
             rule.waitUntil(15000) { controller.ready || controller.error!=null }
             rule.waitForIdle()
@@ -69,8 +73,13 @@ class LibraryUiTest {
                 javax.imageio.ImageIO.write(rule.onAllNodes(isRoot()).onLast().captureToImage().toAwtImage(),"png",file)
             }
             screenshot("library.png")
-            rule.onNodeWithText("深色").assertDoesNotExist()
-            rule.onNodeWithText("暖纸").assertDoesNotExist()
+            rule.onNodeWithText("深色", substring=false).performClick()
+            rule.onNodeWithText("✓ 深色", substring=false).assertExists()
+            assertEquals("dark", edt { controller.settings.theme })
+            screenshot("library-dark.png")
+            rule.onNodeWithText("暖纸", substring=false).performClick()
+            rule.onNodeWithText("✓ 暖纸", substring=false).assertExists()
+            assertEquals("paper", edt { controller.settings.theme })
             rule.onNodeWithText("已读 42%",useUnmergedTree=true).assertExists()
             rule.onAllNodesWithText("尚未阅读",useUnmergedTree=true).assertCountEquals(2)
             val search=rule.onNode(hasSetTextAction())
