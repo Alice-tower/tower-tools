@@ -39,3 +39,9 @@ that directory when distributing the portable application.
 FFmpeg, Whisper, CUDA and model files are selected by the user and are not
 included in these portable outputs. Their licenses therefore are not covered
 by this notice.
+
+ProxyEnvManager 1.1.0 adds test-only Compose UI testing 1.11.1 (Apache-2.0)
+and JUnit Vintage 5.10.1 (EPL-2.0), with JUnit 4.13.2 (EPL-1.0) and Hamcrest
+1.3 (BSD-3-Clause) on the test classpath. These reuse the repository's existing
+test components and are excluded from portable outputs. The packaged runtime
+components and versions remain covered by the table above.

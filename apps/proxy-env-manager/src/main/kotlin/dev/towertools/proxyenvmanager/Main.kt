@@ -6,6 +6,10 @@ import androidx.compose.material.Surface
 import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.res.painterResource
@@ -33,8 +37,9 @@ fun main() {
 
     application {
         val state = rememberWindowState(width = 780.dp, height = 480.dp)
+        var closeRequest by remember { mutableStateOf(0) }
 
-        Window(onCloseRequest = ::exitApplication, state = state, title = AppMetadata.displayName, icon = painterResource("app-icon.png")) {
+        Window(onCloseRequest = { closeRequest++ }, state = state, title = AppMetadata.displayName, icon = painterResource("app-icon.png")) {
             DisposableEffect(window) {
                 singleInstance.onActivate {
                     EventQueue.invokeLater {
@@ -49,7 +54,7 @@ fun main() {
 
             MaterialTheme(colors = if (isSystemInDarkTheme()) darkColors() else lightColors()) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ProxyEnvironmentApp(service)
+                    ProxyEnvironmentApp(service, closeRequest, ::exitApplication)
                 }
             }
         }

@@ -1,5 +1,20 @@
 package dev.towertools.proxyenvmanager
 
+class ProxyEnvironmentConflict(
+    val names: List<String>,
+    val latest: ProxyEnvironment,
+) : IllegalStateException("以下变量已被其他程序修改：${names.joinToString("、")}")
+
+class ProxyEnvironmentSaveFailure(
+    cause: Throwable,
+    val rollbackFailures: List<String>,
+    val latest: ProxyEnvironment? = null,
+) : IllegalStateException(
+    if (rollbackFailures.isEmpty()) "保存失败，已恢复修改前的值：${cause.message ?: cause.javaClass.simpleName}"
+    else "保存失败，以下变量未能恢复：${rollbackFailures.joinToString("、")}。请刷新并检查当前值。",
+    cause,
+)
+
 class ProxyEnvironmentService(
     private val store: UserEnvironmentStore = WindowsUserEnvironmentStore,
     private val presetStore: ProxyPresetStore = FileProxyPresetStore(AppPaths.proxyPresetsFile),
@@ -21,50 +36,38 @@ class ProxyEnvironmentService(
         noProxy = store.read(ProxyVariables.NO_PROXY),
     )
 
-    fun setLocalProxy(): ProxyEnvironment {
-        val configured = presets()
-        require(configured.isConfigured()) { "请先设置 HTTP_PROXY、HTTPS_PROXY 和 ALL_PROXY 预设" }
-        val values = configured.asMap()
-        return changeAll { name -> store.write(name, values.getValue(name)) }
-    }
-
-    fun clear(): ProxyEnvironment = changeAll(store::delete)
-
-    fun applyPreset(name: String): ProxyEnvironment {
-        require(name in ProxyVariables.names) { "不支持的代理环境变量：$name" }
-        val configured = presets()
-        require(configured.isConfigured()) { "请先设置 HTTP_PROXY、HTTPS_PROXY 和 ALL_PROXY 预设" }
-        return changeOne(name) { store.write(name, configured.asMap().getValue(name)) }
-    }
-
-    fun clear(name: String): ProxyEnvironment = changeOne(name) { store.delete(name) }
-
-    private fun changeOne(name: String, change: () -> Unit): ProxyEnvironment {
-        require(name in ProxyVariables.names) { "不支持的代理环境变量：$name" }
-        val previous = store.read(name)
-        try {
-            change()
-            return read()
-        } catch (failure: Throwable) {
-            runCatching { restore(name, previous) }
-                .onFailure { rollbackFailure -> failure.addSuppressed(rollbackFailure) }
-            throw failure
-        }
-    }
-
-    private fun changeAll(change: (String) -> Unit): ProxyEnvironment {
+    fun saveChanges(draft: ProxyEnvironmentDraft): ProxyEnvironment {
+        val changes = draft.changes
         val previous = read()
+        val original = draft.current.asMap()
+        val actual = previous.asMap()
+        val conflicts = changes.keys.filter { actual.getValue(it) != original.getValue(it) }
+        if (conflicts.isNotEmpty()) throw ProxyEnvironmentConflict(conflicts, previous)
+        val attempted = mutableListOf<String>()
         try {
-            ProxyVariables.names.forEach(change)
-            return read()
-        } catch (failure: Throwable) {
-            runCatching {
-                restore(ProxyVariables.HTTP_PROXY, previous.httpProxy)
-                restore(ProxyVariables.HTTPS_PROXY, previous.httpsProxy)
-                restore(ProxyVariables.ALL_PROXY, previous.allProxy)
-                restore(ProxyVariables.NO_PROXY, previous.noProxy)
-            }.onFailure { rollbackFailure -> failure.addSuppressed(rollbackFailure) }
-            throw failure
+            changes.forEach { (name, value) ->
+                // Include the failing operation: a store may throw after changing a value.
+                attempted += name
+                restore(name, value)
+            }
+            val saved = read()
+            check(changes.all { (name, value) -> saved.asMap().getValue(name) == value }) { "保存后读取的值与待保存值不一致" }
+            return saved
+        } catch (failure: Exception) {
+            val rollbackFailures = mutableListOf<String>()
+            attempted.asReversed().forEach { name ->
+                runCatching {
+                    restore(name, actual.getValue(name))
+                    check(store.read(name) == actual.getValue(name)) { "恢复后读取的值不一致" }
+                }.onFailure {
+                    rollbackFailures += name
+                    failure.addSuppressed(it)
+                }
+            }
+            val latest = if (rollbackFailures.isNotEmpty()) {
+                runCatching(::read).onFailure { failure.addSuppressed(it) }.getOrNull()
+            } else null
+            throw ProxyEnvironmentSaveFailure(failure, rollbackFailures, latest)
         }
     }
 

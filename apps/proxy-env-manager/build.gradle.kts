@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.towertools.proxyenvmanager"
-version = "1.0.15"
+version = "1.1.1"
 
 kotlin {
     jvmToolchain(21)
@@ -16,6 +16,8 @@ dependencies {
     implementation("org.jetbrains.compose.material:material:1.11.1")
     implementation("net.java.dev.jna:jna-platform:5.19.1")
     testImplementation(kotlin("test-junit5"))
+    testImplementation("org.jetbrains.compose.ui:ui-test-junit4:1.11.1")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.10.1")
 }
 
 tasks.test {
@@ -28,7 +30,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "ProxyEnvManager"
-            packageVersion = "1.0.15"
+            packageVersion = "1.1.1"
             vendor = "Alice-tower"
             windows {
                 iconFile.set(project.file("icons/app-icon.ico"))

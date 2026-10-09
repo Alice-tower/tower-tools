@@ -1,13 +1,14 @@
 package dev.towertools.proxyenvmanager
 
 import kotlin.test.Test
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class WindowsUserEnvironmentStoreIntegrationTest {
     @Test
     fun `writes and removes the real current-user proxy values then restores them`() {
-        if (System.getenv("TOWER_RUN_PROXY_ENV_INTEGRATION") != "1") return
+        assumeTrue(System.getenv("TOWER_RUN_PROXY_ENV_INTEGRATION") == "1", "Real registry test requires explicit opt-in")
 
         val store = WindowsUserEnvironmentStore
         val configured = ProxyPresets("http://127.0.0.1:8080", "http://127.0.0.1:8080", "socks5://127.0.0.1:1080", "localhost")
@@ -26,9 +27,9 @@ class WindowsUserEnvironmentStoreIntegrationTest {
                     configured.allProxy,
                     configured.noProxy,
                 ),
-                service.setLocalProxy(),
+                service.saveChanges(ProxyEnvironmentDraft(original).useAllPresets(configured)),
             )
-            assertNull(service.clear().httpProxy)
+            assertNull(service.saveChanges(ProxyEnvironmentDraft(service.read()).clearAll()).httpProxy)
             assertNull(service.read().httpsProxy)
             assertNull(service.read().allProxy)
             assertNull(service.read().noProxy)

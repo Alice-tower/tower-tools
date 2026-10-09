@@ -15,12 +15,12 @@ class ProxyEnvironmentServiceTest {
             val store = FakeStore(*original.toList().toTypedArray())
             val service = ProxyEnvironmentService(store, FakePresetStore(configured))
 
-            service.applyPreset(name)
+            service.saveChanges(ProxyEnvironmentDraft(service.read()).usePreset(name, service.presets()))
             assertEquals(original + (name to configured.asMap().getValue(name)), store.values)
             assertEquals(listOf(name), store.mutations)
 
             store.mutations.clear()
-            service.clear(name)
+            service.saveChanges(ProxyEnvironmentDraft(service.read()).clear(name))
             assertEquals(original - name, store.values)
             assertEquals(listOf(name), store.mutations)
         }
@@ -38,9 +38,15 @@ class ProxyEnvironmentServiceTest {
                 }
                 val service = ProxyEnvironmentService(store, FakePresetStore(ProxyPresets("http://new", "http://new", "socks5://new")))
 
-                assertFailsWith<IllegalStateException> {
-                    if (deleting) service.clear(ProxyVariables.HTTP_PROXY) else service.applyPreset(ProxyVariables.HTTP_PROXY)
+                val initial = ProxyEnvironmentDraft(service.read())
+                val edits = if (deleting) initial.clear(ProxyVariables.HTTP_PROXY)
+                    else initial.usePreset(ProxyVariables.HTTP_PROXY, service.presets())
+                if (edits.changes.isEmpty()) {
+                    assertEquals(initial.current, service.saveChanges(edits))
+                    assertEquals(emptyList(), store.mutations)
+                    continue
                 }
+                assertFailsWith<ProxyEnvironmentSaveFailure> { service.saveChanges(edits) }
                 assertEquals(original, store.values)
                 assertEquals(listOf(ProxyVariables.HTTP_PROXY, ProxyVariables.HTTP_PROXY), store.mutations)
             }
@@ -51,9 +57,9 @@ class ProxyEnvironmentServiceTest {
     fun invalidSingleActionsDoNotWriteAnything() {
         val store = FakeStore(ProxyVariables.HTTP_PROXY to "http://keep")
         val service = ProxyEnvironmentService(store, FakePresetStore())
-        assertFailsWith<IllegalArgumentException> { service.applyPreset(ProxyVariables.HTTP_PROXY) }
-        assertFailsWith<IllegalArgumentException> { service.applyPreset("PATH") }
-        assertFailsWith<IllegalArgumentException> { service.clear("PATH") }
+        assertFailsWith<IllegalArgumentException> { service.saveChanges(ProxyEnvironmentDraft(service.read()).usePreset(ProxyVariables.HTTP_PROXY, service.presets())) }
+        assertFailsWith<IllegalArgumentException> { service.saveChanges(ProxyEnvironmentDraft(service.read()).usePreset("PATH", service.presets())) }
+        assertFailsWith<IllegalArgumentException> { service.saveChanges(ProxyEnvironmentDraft(service.read()).clear("PATH")) }
         assertEquals(emptyList(), store.mutations)
     }
 
@@ -69,7 +75,7 @@ class ProxyEnvironmentServiceTest {
     fun setsAllVariablesToConfiguredPresets() {
         val store = FakeStore()
         val configured = ProxyPresets("http://localhost:8080", "http://localhost:8080", "socks5://localhost:1080", "localhost")
-        val result = ProxyEnvironmentService(store, FakePresetStore(configured)).setLocalProxy()
+        val result = ProxyEnvironmentService(store, FakePresetStore(configured)).saveChanges(ProxyEnvironmentDraft(ProxyEnvironment(null, null, null, null)).useAllPresets(configured))
 
         assertEquals(configured.httpProxy, result.httpProxy)
         assertEquals(configured.httpsProxy, result.httpsProxy)
@@ -81,7 +87,7 @@ class ProxyEnvironmentServiceTest {
     fun unconfiguredPresetsCannotChangeEnvironment() {
         val store = FakeStore(ProxyVariables.HTTP_PROXY to "http://existing")
         assertFailsWith<IllegalArgumentException> {
-            ProxyEnvironmentService(store, FakePresetStore()).setLocalProxy()
+            ProxyEnvironmentService(store, FakePresetStore()).saveChanges(ProxyEnvironmentDraft(ProxyEnvironment("http://existing", null, null, null)).useAllPresets(ProxyPresets()))
         }
         assertEquals(mapOf(ProxyVariables.HTTP_PROXY to "http://existing"), store.values)
     }
@@ -94,7 +100,7 @@ class ProxyEnvironmentServiceTest {
             ProxyVariables.ALL_PROXY to "socks5://old-all",
             ProxyVariables.NO_PROXY to "old-no-proxy",
         )
-        val result = ProxyEnvironmentService(store, FakePresetStore()).clear()
+        val result = ProxyEnvironmentService(store, FakePresetStore()).saveChanges(ProxyEnvironmentDraft(ProxyEnvironment("http://old-http", "http://old-https", "socks5://old-all", "old-no-proxy")).clearAll())
 
         assertNull(result.httpProxy)
         assertNull(result.httpsProxy)
@@ -112,7 +118,9 @@ class ProxyEnvironmentServiceTest {
         ).apply { failingName = ProxyVariables.NO_PROXY }
 
         val configured = ProxyPresets("http://localhost:8080", "http://localhost:8080", "socks5://localhost:1080", "localhost")
-        assertFailsWith<IllegalStateException> { ProxyEnvironmentService(store, FakePresetStore(configured)).setLocalProxy() }
+        val service = ProxyEnvironmentService(store, FakePresetStore(configured))
+        val edits = ProxyEnvironmentDraft(service.read()).useAllPresets(configured)
+        assertFailsWith<ProxyEnvironmentSaveFailure> { service.saveChanges(edits) }
         assertEquals("http://old-http", store.values[ProxyVariables.HTTP_PROXY])
         assertEquals("http://old-https", store.values[ProxyVariables.HTTPS_PROXY])
         assertEquals("socks5://old-all", store.values[ProxyVariables.ALL_PROXY])
@@ -128,7 +136,7 @@ class ProxyEnvironmentServiceTest {
 
         service.savePresets(edited)
         assertEquals(edited, service.presets())
-        val result = service.setLocalProxy()
+        val result = service.saveChanges(ProxyEnvironmentDraft(service.read()).useAllPresets(service.presets()))
         assertEquals(edited.httpProxy, result.httpProxy)
         assertEquals(edited.httpsProxy, result.httpsProxy)
         assertEquals(edited.allProxy, result.allProxy)
