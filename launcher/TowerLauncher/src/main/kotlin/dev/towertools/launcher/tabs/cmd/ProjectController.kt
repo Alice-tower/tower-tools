@@ -110,7 +110,7 @@ class ProjectController(
         require(normalizedName.isNotEmpty()) { "请输入项目名称" }
         require(scriptPath.isAbsolute) { "请输入启动文件的完整路径" }
         val normalizedPath = scriptPath.toAbsolutePath().normalize()
-        require(isSupportedFile(normalizedPath)) { "请选择 .cmd 脚本或 .html、.htm 静态网页" }
+        require(isSupportedFile(normalizedPath)) { "请选择 .cmd、.bat 脚本或 .html、.htm 静态网页" }
         require(Files.isRegularFile(normalizedPath)) { "找不到启动文件：$normalizedPath" }
         require(webPort == null || webPort in 1..65535) { "端口必须在 1 到 65535 之间" }
 
@@ -138,7 +138,7 @@ class ProjectController(
 
     fun launch(project: LocalProject): OperationResult {
         if (!Files.isRegularFile(project.scriptPath)) return OperationResult.error("找不到启动文件：${project.scriptPath}")
-        if (!isSupportedFile(project.scriptPath)) return OperationResult.error("请选择 .cmd 脚本或 .html、.htm 静态网页")
+        if (!isSupportedFile(project.scriptPath)) return OperationResult.error("请选择 .cmd、.bat 脚本或 .html、.htm 静态网页")
         if (isStaticWebPage(project.scriptPath.toString())) {
             return desktopAction("打开静态网页") { browse(project.scriptPath.toUri()) }
         }
@@ -191,7 +191,7 @@ class ProjectController(
             path.endsWith(".html", ignoreCase = true) || path.endsWith(".htm", ignoreCase = true)
 
         private fun isSupportedFile(path: Path): Boolean =
-            path.fileName?.toString()?.let { it.endsWith(".cmd", ignoreCase = true) || isStaticWebPage(it) } == true
+            path.fileName?.toString()?.let { it.endsWith(".cmd", ignoreCase = true) || it.endsWith(".bat", ignoreCase = true) || isStaticWebPage(it) } == true
 
         internal fun buildLaunchCommand(scriptPath: Path): String {
             val directory = requireNotNull(scriptPath.parent)

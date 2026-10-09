@@ -509,7 +509,7 @@ internal fun ProjectFormFields(form: ProjectFormState, owner: Frame, onChange: (
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 form.scriptPath, { form.scriptPath = it; form.saveError = null; onChange() }, modifier = Modifier.weight(1f),
-                label = { Text("启动文件路径（.cmd / .html / .htm）") }, singleLine = true,
+                label = { Text("启动文件路径（.cmd / .bat / .html / .htm）") }, singleLine = true,
             )
             Spacer(Modifier.width(8.dp))
             OutlinedButton(onClick = {
@@ -536,9 +536,9 @@ internal fun ProjectFormFields(form: ProjectFormState, owner: Frame, onChange: (
 }
 
 private fun chooseCommandFile(owner: Frame, currentPath: String): Path? {
-    val dialog = FileDialog(owner, "选择 CMD 脚本或静态网页", FileDialog.LOAD).apply {
+    val dialog = FileDialog(owner, "选择 CMD/BAT 脚本或静态网页", FileDialog.LOAD).apply {
         directory = runCatching { Paths.get(currentPath).parent?.toString() }.getOrNull()
-        file = "*.cmd;*.html;*.htm"
+        file = "*.cmd;*.bat;*.html;*.htm"
         isVisible = true
     }
     val selectedFile = dialog.file ?: return null

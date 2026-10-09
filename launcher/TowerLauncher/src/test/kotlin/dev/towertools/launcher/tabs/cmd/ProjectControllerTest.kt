@@ -15,6 +15,31 @@ import kotlin.test.assertTrue
 class ProjectControllerTest {
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     @Test
+    fun batchScriptsCanBeRegisteredAndEditedWithWebPorts() {
+        val root = createTempDirectory("batch-project-")
+        try {
+            val registry = ProjectRegistry(root.resolve("projects.properties"))
+            val controller = ProjectController(registry)
+            val script = Files.writeString(root.resolve("启动 project.bat"), "@echo off")
+            val added = controller.saveProject(null, "BAT 项目", script, 8080).single()
+            assertEquals(added, registry.load().single())
+            assertEquals(8080, added.webPort)
+            val upperCaseScript = Files.writeString(root.resolve("other.BAT"), "@echo off")
+            val edited = controller.saveProject(added.id, "更新项目", upperCaseScript, 9090).single()
+            assertEquals(added.id, edited.id)
+            assertEquals(9090, edited.webPort)
+            assertTrue(ProjectController.buildLaunchCommand(script).endsWith("call \"$script\""))
+            assertTrue(ProjectController.buildLaunchCommand(upperCaseScript).endsWith("call \"$upperCaseScript\""))
+            assertEquals(emptyList(), controller.deleteProject(added.id))
+            assertTrue(Files.exists(script))
+            assertTrue(Files.exists(upperCaseScript))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
     fun staticPagesRoundTripAndLaunchAsFileUris() {
         val root = createTempDirectory("static-pages-")
         try {
