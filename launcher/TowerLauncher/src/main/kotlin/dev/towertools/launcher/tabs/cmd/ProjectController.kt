@@ -78,7 +78,16 @@ class ProjectRegistry(
     }
 }
 
-class ProjectController(registry: ProjectRegistry? = null, appearanceStore: CmdAppearanceStore? = null) {
+class ProjectController(
+    registry: ProjectRegistry? = null,
+    appearanceStore: CmdAppearanceStore? = null,
+    private val browse: (URI) -> Unit = { uri ->
+        check(Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            "当前系统不支持打开浏览器"
+        }
+        Desktop.getDesktop().browse(uri)
+    },
+) {
     private val registry: ProjectRegistry by lazy { registry ?: ProjectRegistry() }
     private val appearanceStore: CmdAppearanceStore by lazy {
         appearanceStore ?: CmdAppearanceStore(this.registry.projectsFile.resolveSibling("appearance.properties"))
@@ -99,14 +108,14 @@ class ProjectController(registry: ProjectRegistry? = null, appearanceStore: CmdA
     fun saveProject(existingId: String?, name: String, scriptPath: Path, webPort: Int?): List<LocalProject> {
         val normalizedName = name.trim()
         require(normalizedName.isNotEmpty()) { "请输入项目名称" }
-        require(scriptPath.isAbsolute) { "请输入 .cmd 文件的完整路径" }
+        require(scriptPath.isAbsolute) { "请输入启动文件的完整路径" }
         val normalizedPath = scriptPath.toAbsolutePath().normalize()
-        require(normalizedPath.fileName.toString().endsWith(".cmd", ignoreCase = true)) { "请选择 .cmd 启动脚本" }
-        require(Files.isRegularFile(normalizedPath)) { "找不到启动脚本：$normalizedPath" }
+        require(isSupportedFile(normalizedPath)) { "请选择 .cmd 脚本或 .html、.htm 静态网页" }
+        require(Files.isRegularFile(normalizedPath)) { "找不到启动文件：$normalizedPath" }
         require(webPort == null || webPort in 1..65535) { "端口必须在 1 到 65535 之间" }
 
         val current = registry.load()
-        val project = LocalProject(existingId ?: UUID.randomUUID().toString(), normalizedName, normalizedPath, webPort)
+        val project = LocalProject(existingId ?: UUID.randomUUID().toString(), normalizedName, normalizedPath, if (isStaticWebPage(normalizedPath.toString())) null else webPort)
         val updated = if (existingId == null) {
             current + project
         } else {
@@ -128,7 +137,11 @@ class ProjectController(registry: ProjectRegistry? = null, appearanceStore: CmdA
     }
 
     fun launch(project: LocalProject): OperationResult {
-        if (!Files.isRegularFile(project.scriptPath)) return OperationResult.error("找不到启动脚本：${project.scriptPath}")
+        if (!Files.isRegularFile(project.scriptPath)) return OperationResult.error("找不到启动文件：${project.scriptPath}")
+        if (!isSupportedFile(project.scriptPath)) return OperationResult.error("请选择 .cmd 脚本或 .html、.htm 静态网页")
+        if (isStaticWebPage(project.scriptPath.toString())) {
+            return desktopAction("打开静态网页") { browse(project.scriptPath.toUri()) }
+        }
         return runCatching {
             val directory = requireNotNull(project.scriptPath.parent) { "启动脚本缺少父目录" }
             ProcessBuilder("cmd.exe", "/d", "/s", "/c", buildLaunchCommand(project.scriptPath))
@@ -174,6 +187,12 @@ class ProjectController(registry: ProjectRegistry? = null, appearanceStore: CmdA
     }
 
     companion object {
+        internal fun isStaticWebPage(path: String): Boolean =
+            path.endsWith(".html", ignoreCase = true) || path.endsWith(".htm", ignoreCase = true)
+
+        private fun isSupportedFile(path: Path): Boolean =
+            path.fileName?.toString()?.let { it.endsWith(".cmd", ignoreCase = true) || isStaticWebPage(it) } == true
+
         internal fun buildLaunchCommand(scriptPath: Path): String {
             val directory = requireNotNull(scriptPath.parent)
             return "start \"Local Project\" /D ${quoteForCmd(directory)} cmd.exe /d /c call ${quoteForCmd(scriptPath)}"

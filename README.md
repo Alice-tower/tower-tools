@@ -1,6 +1,6 @@
 # Tower Tools
 
-Tower Tools 是使用 Kotlin/JVM 和 Compose Desktop 编写的 Windows x64 便携桌面工具箱。**工具塔**把独立 GUI 工具、本机 `.cmd` 项目和 Git 仓库的入口集中到同一个窗口，分别由“工具”“CMD”“仓库”三个 Tab 管理。
+Tower Tools 是使用 Kotlin/JVM 和 Compose Desktop 编写的 Windows x64 便携桌面工具箱。**工具塔**把独立 GUI 工具、本机 `.cmd` 项目和静态网页和 Git 仓库的入口集中到同一个窗口，分别由“工具”“CMD”“仓库”三个 Tab 管理。
 
 ## 快速开始
 
@@ -23,7 +23,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-All.ps1
 
 ### CMD：登记常用脚本
 
-- 在“设置”中登记本机 `.cmd` 项目；双击条目运行脚本。可按分类、排序和收藏整理，右键选择“编辑”后，可在“分类和排序”“项目设置”两个页签中修改设置或删除登记。
+- 在“设置”中登记本机 `.cmd` 项目和静态网页；双击条目运行脚本或用默认浏览器打开静态网页。可按分类、排序和收藏整理，右键选择“编辑”后，可在“分类和排序”“项目设置”两个页签中修改设置或删除登记。
 - 可选填本地 Web 端口，以查看端口是否可连接，并用“打开浏览器”访问项目页面。**端口可连接不等于该项目已运行。**
 
 ### 仓库：浏览本地 Git 仓库

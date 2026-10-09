@@ -128,7 +128,7 @@ internal fun CmdEditDialog(
                     } else {
                         ProjectFormFields(projectForm, owner, onChange = { saved = false })
                         Divider()
-                        Text("删除登记只会从启动器移除项目，不会删除 .cmd 文件或项目目录。",
+                        Text("删除登记只会从启动器移除项目，不会删除 启动文件或项目目录。",
                             style = MaterialTheme.typography.caption, color = Color.Gray)
                         OutlinedButton(
                             onClick = { deleteError = null; confirmDelete = true },
@@ -163,7 +163,7 @@ internal fun CmdEditDialog(
             title = { Text("删除 ${item.project.name}？") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("只会删除启动器中的登记，不会删除 .cmd 文件或项目目录。")
+                    Text("只会删除启动器中的登记，不会删除 启动文件或项目目录。")
                     deleteError?.let { Text(it, color = MaterialTheme.colors.error) }
                 }
             },

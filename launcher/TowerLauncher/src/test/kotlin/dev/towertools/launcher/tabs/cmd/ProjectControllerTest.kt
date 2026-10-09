@@ -15,6 +15,61 @@ import kotlin.test.assertTrue
 class ProjectControllerTest {
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     @Test
+    fun staticPagesRoundTripAndLaunchAsFileUris() {
+        val root = createTempDirectory("static-pages-")
+        try {
+            val opened = mutableListOf<java.net.URI>()
+            val registry = ProjectRegistry(root.resolve("projects.properties"))
+            val controller = ProjectController(registry, browse = { opened.add(it) })
+            for (extension in listOf("html", "htm", "HTML", "HTM")) {
+                val page = Files.createFile(root.resolve("静态 页面 #${opened.size}.$extension"))
+                val project = controller.saveProject(null, extension, page, 8080).last()
+                assertEquals(null, project.webPort)
+                assertEquals(project, registry.load().last())
+                assertEquals(false, controller.launch(project).isError)
+                assertEquals(page.toUri(), opened.last())
+                assertEquals(null, opened.last().fragment)
+            }
+            assertEquals(4, opened.size)
+            val removed = registry.load().first()
+            controller.deleteProject(removed.id)
+            assertTrue(Files.exists(removed.scriptPath))
+            val missing = root.resolve("missing.html")
+            assertFailsWith<IllegalArgumentException> {
+                controller.saveProject(null, "missing", missing, null)
+            }
+            assertTrue(controller.launch(LocalProject("missing", "missing", missing)).isError)
+            val unsupported = Files.createFile(root.resolve("page.txt"))
+            assertFailsWith<IllegalArgumentException> {
+                controller.saveProject(null, "unsupported", unsupported, null)
+            }
+            assertTrue(controller.launch(LocalProject("txt", "txt", unsupported)).isError)
+            assertEquals(4, opened.size)
+            val failingController = ProjectController(registry, browse = { error("browser unavailable") })
+            assertTrue(failingController.launch(registry.load().first()).isError)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun staticPageFormIgnoresStaleWebPort() {
+        val form = ProjectFormState(null)
+        form.name = "网页"
+        form.scriptPath = "C:\\网页\\index.HTML"
+        form.isWebService = true
+        form.portText = "invalid"
+        assertTrue(form.canSave)
+        var saved = false
+        assertTrue(form.submit { _, _, port ->
+            assertEquals(null, port)
+            saved = true
+            null
+        })
+        assertTrue(saved)
+    }
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    @Test
     fun existingProjectsPropertiesLoadWithoutConversion() {
         val root = createTempDirectory("local-project-existing-")
         try {

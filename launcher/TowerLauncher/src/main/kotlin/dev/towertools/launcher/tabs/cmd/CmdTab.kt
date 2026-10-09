@@ -209,7 +209,7 @@ fun CmdTab(controller: ProjectController, state: CmdTabState, owner: Frame) {
 
         Spacer(Modifier.height(2.dp))
         TabFeedbackBar(
-            message = status?.message ?: "双击 CMD 条目启动项目脚本 · 端口可连接不代表项目已运行",
+            message = status?.message ?: "双击条目启动脚本或打开静态网页 · 端口可连接不代表项目已运行",
             isError = status?.isError == true,
         )
     }
@@ -472,19 +472,20 @@ internal class ProjectFormState(project: LocalProject? = null) {
     var portText by mutableStateOf(project?.webPort?.toString().orEmpty())
     var saveError by mutableStateOf<String?>(null)
 
+    val isStaticWebPage: Boolean get() = ProjectController.isStaticWebPage(scriptPath)
     val port: Int? get() = portText.toIntOrNull()
     val canSave: Boolean get() {
         val parsedPort = port
         return name.isNotBlank() && scriptPath.isNotBlank() &&
-            (!isWebService || parsedPort != null && parsedPort in 1..65535)
+            (isStaticWebPage || !isWebService || parsedPort != null && parsedPort in 1..65535)
     }
 
     fun submit(onSave: (String, Path, Int?) -> String?): Boolean {
         val path = runCatching { Paths.get(scriptPath) }.getOrElse {
-            saveError = "启动脚本路径无效：${it.message}"
+            saveError = "启动文件路径无效：${it.message}"
             return false
         }
-        saveError = onSave(name, path, if (isWebService) port else null)
+        saveError = onSave(name, path, if (isWebService && !isStaticWebPage) port else null)
         return saveError == null
     }
 
@@ -508,18 +509,21 @@ internal fun ProjectFormFields(form: ProjectFormState, owner: Frame, onChange: (
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 form.scriptPath, { form.scriptPath = it; form.saveError = null; onChange() }, modifier = Modifier.weight(1f),
-                label = { Text(".cmd 完整路径") }, singleLine = true,
+                label = { Text("启动文件路径（.cmd / .html / .htm）") }, singleLine = true,
             )
             Spacer(Modifier.width(8.dp))
             OutlinedButton(onClick = {
                 chooseCommandFile(owner, form.scriptPath)?.let { form.scriptPath = it.toString(); form.saveError = null; onChange() }
             }) { Text("浏览") }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (!form.isStaticWebPage) Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = form.isWebService, onCheckedChange = { form.isWebService = it; form.saveError = null; onChange() })
             Text("本地 Web 服务")
         }
-        if (form.isWebService) {
+        if (form.isStaticWebPage) {
+            Text("静态网页将用默认浏览器打开，无需填写端口。", style = MaterialTheme.typography.caption)
+        }
+        if (form.isWebService && !form.isStaticWebPage) {
             OutlinedTextField(
                 form.portText, { form.portText = it; form.saveError = null; onChange() }, modifier = Modifier.fillMaxWidth(),
                 label = { Text("占用端口（1–65535）") }, singleLine = true,
@@ -532,9 +536,9 @@ internal fun ProjectFormFields(form: ProjectFormState, owner: Frame, onChange: (
 }
 
 private fun chooseCommandFile(owner: Frame, currentPath: String): Path? {
-    val dialog = FileDialog(owner, "选择 .cmd 启动脚本", FileDialog.LOAD).apply {
+    val dialog = FileDialog(owner, "选择 CMD 脚本或静态网页", FileDialog.LOAD).apply {
         directory = runCatching { Paths.get(currentPath).parent?.toString() }.getOrNull()
-        file = "*.cmd"
+        file = "*.cmd;*.html;*.htm"
         isVisible = true
     }
     val selectedFile = dialog.file ?: return null
