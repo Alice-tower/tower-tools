@@ -37,6 +37,8 @@ class RepositoryTabState(private val controller: RepositoryController) {
         },
     )
     val editingRepository = mutableStateOf<DisplayRepository?>(null)
+    internal val gitDialog = mutableStateOf<RepositoryGitDialogState?>(null)
+    private val gitDialogs = mutableMapOf<String, RepositoryGitDialogState>()
     val message = mutableStateOf(
         initialLocations.exceptionOrNull()?.let { "读取仓库路径失败：${it.message}" }
             ?: initialAppearance.exceptionOrNull()?.let { "读取仓库分类设置失败：${it.message}" },
@@ -53,6 +55,13 @@ class RepositoryTabState(private val controller: RepositoryController) {
         val current = remoteFailures.value
         val updated = if (reason == null) current - key else current + (key to reason)
         if (updated != current) remoteFailures.value = updated
+    }
+
+    internal fun openGitDialog(repository: DisplayRepository) {
+        val dialog = gitDialogs.getOrPut(repository.key) { RepositoryGitDialogState(repository, scope) }
+        dialog.repository = repository
+        gitDialog.value = dialog
+        dialog.refresh()
     }
 
     fun refreshAll() {

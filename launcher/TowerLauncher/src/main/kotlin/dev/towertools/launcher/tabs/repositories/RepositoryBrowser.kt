@@ -84,6 +84,7 @@ internal fun RepositoryBrowser(controller: RepositoryController, state: Reposito
     var editingCategory by state.editingCategory
     var selectedFilter by state.selectedFilter
     var editingRepository by state.editingRepository
+    val gitDialog by state.gitDialog
     val repositories = displayRepositories(discoveredRepositories(locations), settings)
     val categories = orderedRepositoryCategories(repositories, settings.categoryOrder)
 
@@ -121,6 +122,7 @@ internal fun RepositoryBrowser(controller: RepositoryController, state: Reposito
             selectedFilter = selectedFilter,
             minimalButtons = settings.minimalButtons,
             onEdit = { editingRepository = it },
+            onGitStatus = state::openGitDialog,
             onRemoteFailure = state::recordRemoteFailure,
             onToggleFavorite = { item ->
                 runCatching {
@@ -134,6 +136,10 @@ internal fun RepositoryBrowser(controller: RepositoryController, state: Reposito
             onMessage = { showMessage(it, error = true) },
             modifier = Modifier.weight(1f),
         )
+    }
+
+    gitDialog?.let { dialog ->
+        RepositoryGitDialog(dialog, onDismiss = { state.gitDialog.value = null })
     }
 
     editingCategory?.let { category ->
@@ -317,6 +323,7 @@ private fun RepositoryList(
     selectedFilter: RepositoryFilter,
     minimalButtons: Boolean,
     onEdit: (DisplayRepository) -> Unit,
+    onGitStatus: (DisplayRepository) -> Unit,
     onRemoteFailure: (Path, String?) -> Unit,
     onToggleFavorite: (DisplayRepository) -> Unit,
     onMessage: (String) -> Unit,
@@ -338,13 +345,13 @@ private fun RepositoryList(
                         modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
                 }
                 items(members, key = { it.key }) { item ->
-                    RepositoryRow(item, locations, minimalButtons, { onEdit(item) },
+                    RepositoryRow(item, locations, minimalButtons, { onEdit(item) }, { onGitStatus(item) },
                         { onToggleFavorite(item) }, onRemoteFailure, onMessage)
                 }
             }
         } else {
             items(visible, key = { it.key }) { item ->
-                RepositoryRow(item, locations, minimalButtons, { onEdit(item) },
+                RepositoryRow(item, locations, minimalButtons, { onEdit(item) }, { onGitStatus(item) },
                     { onToggleFavorite(item) }, onRemoteFailure, onMessage)
             }
         }
@@ -387,6 +394,7 @@ private fun RepositoryRow(
     locations: List<RepositoryLocation>,
     minimalButtons: Boolean,
     onEdit: () -> Unit,
+    onGitStatus: () -> Unit,
     onToggleFavorite: () -> Unit,
     onRemoteFailure: (Path, String?) -> Unit,
     onMessage: (String) -> Unit,
@@ -526,6 +534,7 @@ private fun RepositoryRow(
                             .onFailure { onMessage(it.message ?: "无法打开仓库的父目录") }
                     }) { Text("打开所在目录") }
                     DropdownMenuItem(onClick = { menuExpanded = false; onEdit() }) { Text("编辑") }
+                    DropdownMenuItem(onClick = { menuExpanded = false; onGitStatus() }) { Text("Git 状态") }
                 }
             }
         }
