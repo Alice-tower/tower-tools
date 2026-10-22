@@ -49,6 +49,7 @@ class RepositoryGitDialogTest {
         val pagingStarted = AtomicInteger()
         val releasePaging = CountDownLatch(1)
         val openedDirectory = AtomicReference<Path?>(null)
+        val dismissCount = AtomicInteger()
         val git = object : RepositoryGitClient {
             override fun load(path: Path, target: GitTarget?): GitSnapshot = error("UI smoke test must not read Git")
             override fun commits(path: Path, head: String, skip: Int, limit: Int): GitCommitPage {
@@ -107,7 +108,7 @@ class RepositoryGitDialogTest {
                     ),
                 ) {
                     MaterialTheme {
-                        RepositoryGitDialog(state, onDismiss = { exitApplication() })
+                        RepositoryGitDialog(state, onDismiss = { dismissCount.incrementAndGet() })
                     }
                     LaunchedEffect(Unit) {
                         windowReference.set(window)
@@ -208,9 +209,21 @@ class RepositoryGitDialogTest {
                                 assertUsableDialog(window)
 
                                 // Smaller host sizes must constrain the surface and keep both panels and footer visible.
+                                state.snapshot.value = local.copy(
+                                    branch = "feature/" + "long-branch-name/".repeat(8),
+                                    upstream = GitTarget("origin", "feature/" + "long-branch-name/".repeat(8)),
+                                )
                                 window.setSize(980, 650)
                                 delay(150)
                                 assertUsableDialog(window)
+
+                                state.isBusy.value = true
+                                delay(100)
+                                assertControlDisabled(window, "刷新", true)
+                                assertControlDisabled(window, "关闭 Git 状态", false)
+                                click(window, "关闭 Git 状态")
+                                assertEquals(1, dismissCount.get(), "Top-right close button must dismiss even during an operation")
+                                assertTrue(state.isBusy.value, "Closing must not cancel the repository operation")
                             }
                         } catch (error: Throwable) {
                             failure.compareAndSet(null, AssertionError("Git dialog smoke test failed\n${windowDiagnostics()}", error))
@@ -248,6 +261,16 @@ class RepositoryGitDialogTest {
         assertTrue(history.right < details.left, "Commit history must remain to the left of the detail tabs")
         assertTrue(history.height > 100f && details.height > 100f, "Both panels must retain usable scroll space")
         val surface = taggedNode(dialog, "git-dialog-surface").boundsInWindow
+        val actions = taggedNode(dialog, "git-header-actions").boundsInWindow
+        val header = taggedNode(dialog, "git-dialog-header").boundsInWindow
+        val summary = taggedNode(dialog, "git-sync-summary").boundsInWindow
+        val close = actionNode(dialog, "关闭 Git 状态").boundsInWindow
+        val refresh = actionNode(dialog, "刷新").boundsInWindow
+        assertTrue(kotlin.math.abs(close.right - header.right) <= 1f, "Close button must stay at the far right of the header")
+        assertTrue(kotlin.math.abs(close.top - header.top) <= 1f, "Close button must stay at the top of the header")
+        assertTrue(refresh.right < close.left, "Refresh must precede the separate close control")
+        assertTrue(actions.bottom <= summary.top, "Sync information must remain below the header actions")
+        assertTrue(kotlin.math.abs(summary.right - actions.right) <= 1f, "Sync information must use the full right column width")
         val bounds = dialog.boundsInWindow
         val transform = window.graphicsConfiguration.defaultTransform
         val logicalRight = bounds.right / transform.scaleX
@@ -321,7 +344,8 @@ class RepositoryGitDialogTest {
 
     private fun actionNode(dialog: SemanticsNode, label: String): SemanticsNode =
         checkNotNull(nodes(dialog).firstOrNull { node ->
-            node.config.getOrNull(SemanticsProperties.Text).orEmpty().any { it.text == label } &&
+            (node.config.getOrNull(SemanticsProperties.Text).orEmpty().any { it.text == label } ||
+                label in node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()) &&
                 node.config.getOrNull(SemanticsActions.OnClick)?.action != null
         }) { "Missing clickable $label" }
 

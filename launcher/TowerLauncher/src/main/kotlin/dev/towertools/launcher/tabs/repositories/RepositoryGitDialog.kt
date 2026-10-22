@@ -1,5 +1,6 @@
 package dev.towertools.launcher.tabs.repositories
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +22,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
+import androidx.compose.material.IconButton
 import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.LocalContentColor
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Surface
@@ -35,8 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,7 +88,7 @@ internal fun RepositoryGitDialog(state: RepositoryGitDialogState, onDismiss: () 
                 elevation = 24.dp,
             ) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    GitDialogHeader(state, current, working)
+                    GitDialogHeader(state, current, working, onDismiss)
                     Row(
                         Modifier.fillMaxWidth().weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -129,7 +136,6 @@ internal fun RepositoryGitDialog(state: RepositoryGitDialogState, onDismiss: () 
                             enabled = operationEnabled,
                             onClick = { state.push(); selectedPage = 2 },
                         ) { Text("Git Push") }
-                        TextButton(onClick = onDismiss) { Text("关闭") }
                     }
                 }
             }
@@ -142,6 +148,7 @@ private fun GitDialogHeader(
     state: RepositoryGitDialogState,
     snapshot: GitSnapshot?,
     working: Boolean,
+    onDismiss: () -> Unit,
 ) {
     val message by state.message
     val isError by state.isError
@@ -150,7 +157,7 @@ private fun GitDialogHeader(
     Row(
         Modifier.fillMaxWidth().testTag("git-dialog-header"),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         Column(
             Modifier.weight(1f).testTag("git-repository-identity"),
@@ -172,13 +179,33 @@ private fun GitDialogHeader(
                 )
             }
         }
-        Row(
+        Column(
             Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            Row(
+                Modifier.fillMaxWidth().testTag("git-header-actions"),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = state::refresh, enabled = !working, modifier = Modifier.height(36.dp)) {
+                    Text("刷新")
+                }
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(36.dp).semantics { contentDescription = "关闭 Git 状态" },
+                ) {
+                    val color = LocalContentColor.current
+                    Canvas(Modifier.size(20.dp)) {
+                        val inset = size.width * 0.2f
+                        val end = size.width - inset
+                        drawLine(color, Offset(inset, inset), Offset(end, end), strokeWidth = 2.dp.toPx())
+                        drawLine(color, Offset(end, inset), Offset(inset, end), strokeWidth = 2.dp.toPx())
+                    }
+                }
+            }
             Column(
-                Modifier.weight(1f).testTag("git-sync-summary"),
+                Modifier.fillMaxWidth().testTag("git-sync-summary"),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 if (snapshot != null) GitBranchSummary(snapshot)
@@ -196,7 +223,6 @@ private fun GitDialogHeader(
                 }
                 if (isBusy) LinearProgressIndicator(Modifier.fillMaxWidth().height(2.dp))
             }
-            TextButton(onClick = state::refresh, enabled = !working) { Text("刷新") }
         }
     }
 }
