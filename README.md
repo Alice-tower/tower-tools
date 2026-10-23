@@ -45,8 +45,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-All.ps1
 | [影音转写](apps/media-transcriber/README.md) | 从媒体提取 MP3，使用自备的 FFmpeg、CUDA 版 Whisper 和模型转写音频。 |
 | [本地资源语义管理器](apps/resource-tagger/README.md) | 扫描指定目录，以标签和别名整理资源并定位文件，不修改资源本身。 |
 | [静读](apps/tower-reader/README.md) | 离线管理并阅读 TXT、EPUB、PDF，支持单双页、自动保存进度及内嵌微信读书网页版。 |
+| [Strata 启动配置器](apps/strata-launcher/README.md) | 选择 Strata 全局操作或具体预设，配置、预览、复制并执行启动和管理命令，支持打开预设 JSON 与删除；显示 7271 端口状态，可复制 API 地址和打开网页；全局操作底部的实验性设置支持基础配置 ESP 开关；每次打开恢复默认，不保存界面状态。 |
 
 ## 数据、文档与许可
+
+Strata 启动配置器 1.9.1 的预览和复制命令包含当前预设目录，并校验完整 CMD 命令长度；ESP 设置保留其他控制向量，修改前备份配置。恢复方法见[工具说明](apps/strata-launcher/README.md#esp-备份与恢复)。
 
 分类、项目登记等用户设置保存在 `%LOCALAPPDATA%\Alice-tower\` 下；重新构建或替换便携程序不会覆盖这些数据。`outputs/` 已被 Git 忽略。
 

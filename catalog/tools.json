@@ -2,6 +2,16 @@
     "schemaVersion":  1,
     "tools":  [
                   {
+                      "id":  "dev.towertools.stratalauncher",
+                      "projectName":  "StrataLauncher",
+                      "displayName":  "Strata 启动配置器",
+                      "description":  "配置 Strata 参数、管理预设并执行启动与管理命令",
+                      "version":  "1.9.1",
+                      "executablePath":  "tools/dev.towertools.stratalauncher/StrataLauncher.exe",
+                      "defaultCategory":  "未分类",
+                      "defaultOrder":  0
+                  },
+                  {
                       "id":  "dev.towertools.resourcetagger",
                       "projectName":  "ResourceTagger",
                       "displayName":  "本地资源语义管理器",

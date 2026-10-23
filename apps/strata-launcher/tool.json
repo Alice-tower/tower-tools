@@ -1,0 +1,10 @@
+{
+    "id":  "dev.towertools.stratalauncher",
+    "projectName":  "StrataLauncher",
+    "displayName":  "Strata 启动配置器",
+    "description":  "配置 Strata 参数、管理预设并执行启动与管理命令",
+    "version":  "1.9.1",
+    "author":  "Alice-tower",
+    "uuid":  "e7e8a3b9-bfbc-429f-a826-8b198b7466b4",
+    "executableName":  "StrataLauncher.exe"
+}
