@@ -451,6 +451,10 @@ private fun RepositoryRow(
             }
         }
     }
+    val openDirectory: () -> Unit = {
+        runCatching { openRepositoryDirectory(item) }
+            .onFailure { onMessage(it.message ?: "无法打开仓库目录") }
+    }
     Card(
         modifier = Modifier.fillMaxWidth().height(80.dp)
             .onPointerEvent(PointerEventType.Press) {
@@ -461,8 +465,7 @@ private fun RepositoryRow(
             }
             .combinedClickable(
                 onClick = {},
-                onDoubleClick = { runCatching { openRepositoryDirectory(item) }
-                    .onFailure { onMessage(it.message ?: "无法打开仓库目录") } },
+                onDoubleClick = openDirectory,
             ),
         elevation = 1.dp,
     ) {
@@ -528,6 +531,10 @@ private fun RepositoryRow(
             }
             Box(Modifier.offset { menuPosition }.size(1.dp)) {
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(onClick = {
+                        menuExpanded = false
+                        openDirectory()
+                    }) { Text("打开") }
                     DropdownMenuItem(onClick = {
                         menuExpanded = false
                         runCatching { openRepositoryParentDirectory(item) }

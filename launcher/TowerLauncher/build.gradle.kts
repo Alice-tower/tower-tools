@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.towertools.launcher"
-version = "1.5.4"
+version = "1.5.5"
 
 kotlin {
     jvmToolchain(21)
@@ -30,7 +30,7 @@ compose.desktop {
 
         nativeDistributions {
             packageName = "TowerLauncher"
-            packageVersion = "1.5.4"
+            packageVersion = "1.5.5"
             vendor = "Alice-tower"
             windows {
                 iconFile.set(project.file("icons/app-icon.ico"))

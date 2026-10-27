@@ -464,6 +464,10 @@ private fun ToolRow(
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var menuPosition by remember { mutableStateOf(IntOffset.Zero) }
+    val openTool: () -> Unit = {
+        runCatching { ToolActions.launch(tool) }
+            .onFailure { onMessage(it.message ?: "启动失败") }
+    }
 
     Card(
         modifier = Modifier
@@ -477,10 +481,7 @@ private fun ToolRow(
             }
             .combinedClickable(
                 onClick = {},
-                onDoubleClick = {
-                    runCatching { ToolActions.launch(tool) }
-                        .onFailure { onMessage(it.message ?: "启动失败") }
-                },
+                onDoubleClick = openTool,
             ),
         elevation = 1.dp,
     ) {
@@ -519,6 +520,10 @@ private fun ToolRow(
 
             Box(Modifier.offset { menuPosition }.size(1.dp)) {
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(onClick = {
+                        menuExpanded = false
+                        openTool()
+                    }) { Text("打开") }
                     DropdownMenuItem(onClick = {
                         menuExpanded = false
                         runCatching { ToolActions.openDirectory(tool) }

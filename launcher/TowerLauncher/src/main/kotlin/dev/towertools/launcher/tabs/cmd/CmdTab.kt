@@ -380,6 +380,7 @@ private fun ProjectCard(
             }
             Box(Modifier.offset { menuPosition }.size(1.dp)) {
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(onClick = { menuExpanded = false; onLaunch() }) { Text("打开") }
                     DropdownMenuItem(onClick = { menuExpanded = false; onDirectory() }) { Text("打开所在目录") }
                     DropdownMenuItem(onClick = { menuExpanded = false; onEdit() }) { Text("编辑") }
                 }
